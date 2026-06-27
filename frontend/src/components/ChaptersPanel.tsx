@@ -1,18 +1,17 @@
-﻿import { useState, useEffect, useRef, useCallback } from 'react'
+﻿import { useState, useEffect, useRef } from 'react'
 import ConfirmModal from './ui/ConfirmModal'
 import Icon from './ui/Icon'
 import { showToast } from './ui/Toast'
-import LoadingState, { SkeletonSidebar } from './ui/Skeleton'
+import { SkeletonSidebar } from './ui/Skeleton'
 import { useRefreshKey, triggerRefresh } from '../store.js'
 import MarkdownEditor from './editor/MarkdownEditor'
-import { useTabs, useActiveTabId, openTab, closeTab, setActiveTab } from '../stores/tabStore.js'
+import { useTabs, openTab, closeTab, setActiveTab } from '../stores/tabStore.js'
 
 export default function ChaptersPanel({ bookId }: { bookId: string }) {
   const refreshKey = useRefreshKey()
   const [chapters, setChapters] = useState([])
   const [selectedId, setSelectedId] = useState(null)
   const tabs = useTabs()
-  const activeTabId = useActiveTabId()
   const [editing, setEditing] = useState(false)
   const [editTitle, setEditTitle] = useState('')
   const [editContent, setEditContent] = useState('')
@@ -34,15 +33,13 @@ export default function ChaptersPanel({ bookId }: { bookId: string }) {
   const [commitMsg, setCommitMsg] = useState('')
   const [deleteChapter, setDeleteChapter] = useState(false)
   const [deleteVersion, setDeleteVersion] = useState(null)
-  const [autoSaved, setAutoSaved] = useState(false)
+  const [autoSaved] = useState(false)
   const [revertVersionId, setRevertVersionId] = useState(null)
   const [showCreateMenu, setShowCreateMenu] = useState(false)
   const [chapterSearch, setChapterSearch] = useState('')
-  const autoSaveTimer = useRef(null)
   const createMenuRef = useRef(null)
-  const [recentlyEdited, setRecentlyEdited] = useState(new Set())
+  const [recentlyEdited] = useState(new Set())
   const editorInstanceRef = useRef(null)
-  const scrollPositionRef = useRef(0)
 
   // Find-replace state
   const [showFindReplace, setShowFindReplace] = useState(false)
@@ -53,21 +50,7 @@ export default function ChaptersPanel({ bookId }: { bookId: string }) {
   const [matches, setMatches] = useState([])
   const findInputRef = useRef(null)
 
-  function markRecentlyEdited(chapterId) {
-    setRecentlyEdited(prev => {
-      const next = new Set(prev)
-      next.add(chapterId)
-      return next
-    })
-    setTimeout(() => {
-      setRecentlyEdited(prev => {
-        const next = new Set(prev)
-        next.delete(chapterId)
-        return next
-      })
-    }, 60000)
-  }
-
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { loadChapters() }, [bookId, refreshKey])
 
   // Close create menu on outside click

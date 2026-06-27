@@ -199,7 +199,7 @@ export default function Bookshelf() {
             </div>
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-              {books.map((book, i) => (
+              {books.map((book) => (
                 <div
                   key={book.id}
                   onClick={() => navigate(`/book/${book.id}`)}

@@ -10,7 +10,6 @@ from .chat import router as chat_router
 from .documents import router as documents_router
 from .export import router as export_router
 from .interactive_routes import router as interactive_router
-from .update import router as update_router
 from .knowledge import router as knowledge_router
 from .materials import router as materials_router
 from .reviews import router as reviews_router
@@ -22,6 +21,7 @@ from .skills_route import router as skills_router
 from .stats import router as stats_router
 from .styles_route import router as styles_router
 from .tasks import router as tasks_router
+from .update import router as update_router
 from .volumes import router as volumes_router
 from .workflow import router as workflow_router
 
