@@ -82,15 +82,22 @@ docker compose up -d
 echo ""
 echo "[5/5] 等待服务就绪..."
 ready=false
-for i in $(seq 1 30); do
-    if curl -s http://localhost:8190 >/dev/null 2>&1; then
-        echo -e "${GREEN}  ✓ 前端已就绪${NC}"
-        ready=true
-        break
-    fi
-    echo "  等待中... ($i/30)"
-    sleep 3
-done
+if command -v curl &>/dev/null; then
+    for i in $(seq 1 30); do
+        if curl -s http://localhost:8190 >/dev/null 2>&1; then
+            echo -e "${GREEN}  ✓ 前端已就绪${NC}"
+            ready=true
+            break
+        fi
+        echo "  等待中... ($i/30)"
+        sleep 3
+    done
+else
+    echo -e "${YELLOW}  ℹ 未检测到 curl，跳过健康检查${NC}"
+    echo "  请手动访问 http://localhost:8190 确认服务就绪"
+    sleep 10
+    ready=true
+fi
 
 if [ "$ready" = false ]; then
     echo -e "${YELLOW}  ℹ 服务仍在启动中，请稍后访问${NC}"
