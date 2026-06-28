@@ -1546,17 +1546,25 @@ async def _execute_tool_streaming(
     queue: asyncio.Queue = asyncio.Queue()
 
     async def _run():
-        result = await execute_tool_streaming(
-            loop,
-            name,
-            args,
-            kb,
-            agent_config.book_id,
-            user_message,
-            agent_config.session_id,
-            queue,
-            context=context,
-        )
+        # Wrap in try/except so a tool exception ALWAYS terminates the queue.
+        # Without this, an exception here leaves the queue without a None
+        # sentinel → the consumer's `await queue.get()` deadlocks → the agent
+        # loop hangs → abnormal_exit with no report to the user.
+        try:
+            result = await execute_tool_streaming(
+                loop,
+                name,
+                args,
+                kb,
+                agent_config.book_id,
+                user_message,
+                agent_config.session_id,
+                queue,
+                context=context,
+            )
+        except Exception as e:
+            logger.warning("Streaming tool %s raised: %s", name, e)
+            result = {"error": True, "tool": name, "message": str(e)[:200]}
         await queue.put(result)
         await queue.put(None)
 
