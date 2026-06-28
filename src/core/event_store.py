@@ -17,7 +17,7 @@ File format: ``data/events_{session_id}.jsonl``, one JSON object per line.
 import json
 import logging
 import threading
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from .config import DATA_DIR
@@ -64,7 +64,7 @@ class EventStore:
         ``progress``, ``user_message``.
         """
         record = {
-            "ts": datetime.now(timezone.utc).isoformat(),
+            "ts": datetime.now(UTC).isoformat(),
             "type": event_type,
             "data": data,
         }

@@ -117,6 +117,7 @@ async def _recover_tasks(task_runner):
 async def _cleanup_stale_sessions():
     """Periodically release sessions that have been stuck for too long."""
     import asyncio
+
     from core.session_state import run_state as ss
     await asyncio.sleep(10)
     while True:

@@ -15,7 +15,7 @@ from core.event_store import event_store
 from core.extractor import accept_proposal, extract_from_text, extract_stream
 from core.graph_store import GraphStore, get_store
 from core.question import manager as question_manager
-from core.session_state import BusyError, run_state
+from core.session_state import run_state
 from core.task_queue import TaskStatus, task_queue
 from core.writer import write_stream
 from data.json_store import json_store

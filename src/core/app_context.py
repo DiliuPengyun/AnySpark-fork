@@ -52,8 +52,8 @@ def reset_for_testing():
     bus_mod.bus = EventBus()
 
     # Reset run state
-    from core.session_state import SessionStateMachine
     import core.session_state as ss_mod
+    from core.session_state import SessionStateMachine
     ss_mod.run_state = SessionStateMachine()
 
     # Reset question manager
