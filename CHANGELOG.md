@@ -2,6 +2,17 @@
 
 本文档记录项目的所有重要变更。格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)。
 
+## [1.1.1] - 2026-06-28
+
+### 修复
+
+- **流式工具异常导致 Agent 卡死（abnormal_exit 根因）**：`_execute_tool_streaming` 的 `_run()` 缺少 try/except，当流式工具（如 extract_all_chapters）执行中抛异常时，`queue.put(None)` 不执行 → 消费者 `await queue.get()` 死锁 → Agent 循环卡住 → 用户看到几个 progress 后「停止啥都没有」→ 最终 abnormal_exit。已加 try/except，异常转为 error result 返回，Agent 能继续或报告，不再卡死。
+- 该 bug 在 metrics.jsonl 中表现为 `finish_reason: abnormal_exit` + `rounds: 1` + `tool_calls: 0`，典型场景为「提取知识库/世界观」时 extract_all_chapters 工具转几圈后静默停止。
+
+### 验证
+- pytest test_agent_loop + test_executor_utils: 44 passed
+- ruff check 干净
+
 ## [1.1.0] - 2026-06-28
 
 ### Agent 循环终止机制大厂对齐演进
