@@ -136,350 +136,365 @@ async def _extract_all_chapters(
         loop, args: dict, kb, book_id: str, msg: str = "", queue=None) -> str:
 
     args.get("focus", "")
-    chapters = json_store.load_chapters(book_id)
-    if not chapters:
-        return "当前书籍没有章节。请先导入章节。"
+    try:
+        chapters = json_store.load_chapters(book_id)
+        if not chapters:
+            return "当前书籍没有章节。请先导入章节。"
 
-    total_new = 0
-    total_updated = 0
-    total_relations = 0
-    total_foreshadows = 0
-    chapter_logs = []
-    collected_tl_events = []  # LLM-extracted timeline events with location
+        total_new = 0
+        total_updated = 0
+        total_relations = 0
+        total_foreshadows = 0
+        chapter_logs = []
+        collected_tl_events = []  # LLM-extracted timeline events with location
 
-    PER_CHAPTER_TIMEOUT = 200
-    BATCH_CONCURRENCY = 3
-    failed = 0
+        PER_CHAPTER_TIMEOUT = 200
+        BATCH_CONCURRENCY = 3
+        failed = 0
 
-    entity_cache = _EntityCache(kb)
+        entity_cache = _EntityCache(kb)
 
-    prepared = []
-    for idx, ch in enumerate(chapters):
-        view = json_store._chapter_view(ch) if "versions" in ch else ch
-        content = view.get("content", "")
-        title = view.get("title", "")
-        prepared.append((idx, title, content))
+        prepared = []
+        for idx, ch in enumerate(chapters):
+            view = json_store._chapter_view(ch) if "versions" in ch else ch
+            content = view.get("content", "")
+            title = view.get("title", "")
+            prepared.append((idx, title, content))
 
-    async def _process_one(idx: int, title: str,
-                           content: str, cards_snapshot: str):
-        tag = f"第{idx + 1}/{len(chapters)}章 {title[:15]}"
-
-        if not content or len(content) < 50:
-            return ("skip_empty", tag, None)
-
-        if queue:
-            await queue.put({"_progress": f"提取 {tag} ({len(content)}字)..."})
-
-        prompt = f"## 已有角色/实体卡片\n{cards_snapshot}\n\n" if cards_snapshot else ""
-        prompt += f"## 当前章节: {title}\n{content[:config.storage.max_extraction_chars]}\n\n请输出JSON:"
-
-        try:
-            response = await asyncio.wait_for(
-                loop.run_in_executor(
-                    _ai_executor,
-                    llm_chat,
-                    prompt,
-                    get_extraction_system_prompt(),
-                    0.1,
-                    "extraction"),
-                timeout=PER_CHAPTER_TIMEOUT
-            )
-        except TimeoutError:
-            return ("timeout", tag, None)
-        except Exception as e:
-            err = str(e)[:60]
-            if any(k in err.lower()
-                   for k in ["content", "filter", "sensitive", "policy"]):
-                return ("censored", tag, err[:40])
-            return ("error", tag, err[:40])
-
-        if not response or len(response.strip()) < 10:
-            return ("empty", tag, None)
-
-        try:
-            chapter_result = _parse_progressive_result(response)
-        except Exception as e:
-            return ("parse_error", tag, str(e)[:40])
-
-        return ("ok", tag, chapter_result)
-
-    for batch_start in range(0, len(prepared), BATCH_CONCURRENCY):
-        from core.session_state import run_state
-        handle = run_state.get_handle(
-            f"sub_{book_id}") or run_state.get_handle(book_id)
-        if handle and handle.cancelled:
-            chapter_logs.append("  ⏹ 用户中止，后续章节跳过")
-            break
-
-        batch = prepared[batch_start:batch_start + BATCH_CONCURRENCY]
-
-        to_process = []
-        for idx, title, content in batch:
+        async def _process_one(idx: int, title: str,
+                               content: str, cards_snapshot: str):
             tag = f"第{idx + 1}/{len(chapters)}章 {title[:15]}"
+
             if not content or len(content) < 50:
-                chapter_logs.append(f"  ⚠️ {tag}: 跳过（无内容）")
+                return ("skip_empty", tag, None)
+
+            if queue:
+                await queue.put({"_progress": f"提取 {tag} ({len(content)}字)..."})
+
+            prompt = f"## 已有角色/实体卡片\n{cards_snapshot}\n\n" if cards_snapshot else ""
+            prompt += f"## 当前章节: {title}\n{content[:config.storage.max_extraction_chars]}\n\n请输出JSON:"
+
+            try:
+                response = await asyncio.wait_for(
+                    loop.run_in_executor(
+                        _ai_executor,
+                        llm_chat,
+                        prompt,
+                        get_extraction_system_prompt(),
+                        0.1,
+                        "extraction"),
+                    timeout=PER_CHAPTER_TIMEOUT
+                )
+            except TimeoutError:
+                return ("timeout", tag, None)
+            except Exception as e:
+                err = str(e)[:60]
+                if any(k in err.lower()
+                       for k in ["content", "filter", "sensitive", "policy"]):
+                    return ("censored", tag, err[:40])
+                return ("error", tag, err[:40])
+
+            if not response or len(response.strip()) < 10:
+                return ("empty", tag, None)
+
+            try:
+                chapter_result = _parse_progressive_result(response)
+            except Exception as e:
+                return ("parse_error", tag, str(e)[:40])
+
+            return ("ok", tag, chapter_result)
+
+        for batch_start in range(0, len(prepared), BATCH_CONCURRENCY):
+            from core.session_state import run_state
+            handle = run_state.get_handle(
+                f"sub_{book_id}") or run_state.get_handle(book_id)
+            if handle and handle.cancelled:
+                chapter_logs.append("  ⏹ 用户中止，后续章节跳过")
+                break
+
+            batch = prepared[batch_start:batch_start + BATCH_CONCURRENCY]
+
+            to_process = []
+            for idx, title, content in batch:
+                tag = f"第{idx + 1}/{len(chapters)}章 {title[:15]}"
+                if not content or len(content) < 50:
+                    chapter_logs.append(f"  ⚠️ {tag}: 跳过（无内容）")
+                    continue
+
+                if entity_cache.get_cards():
+                    if _local_skip_check(content, entity_cache.get_known_names()):
+                        try:
+                            skip = await asyncio.wait_for(
+                                _should_skip_chapter(
+                                    loop, content, entity_cache.get_cards(), title),
+                                timeout=30
+                            )
+                        except Exception:
+                            skip = False
+                        if skip:
+                            status = f"  ⏭ {tag} ({len(content)}字): 无新变化，跳过"
+                            chapter_logs.append(status)
+                            if queue:
+                                await queue.put({"_progress": status.strip()})
+                            continue
+
+                to_process.append((idx, title, content))
+
+            if not to_process:
                 continue
 
-            if entity_cache.get_cards():
-                if _local_skip_check(content, entity_cache.get_known_names()):
+            if queue:
+                tags = [f"第{idx + 1}章" for idx, _, _ in to_process]
+                await queue.put({"_progress": f"并行提取: {', '.join(tags)}..."})
+
+            cards_snapshot = entity_cache.get_cards()
+
+            sem = asyncio.Semaphore(BATCH_CONCURRENCY)
+
+            async def _sem_process(idx, title, content):
+                async with sem:
+                    return await _process_one(idx, title, content, cards_snapshot)
+
+            tasks = [_sem_process(idx, title, content)
+                     for idx, title, content in to_process]
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+
+            batch_new = 0
+            batch_updated = 0
+            batch_rels = 0
+            batch_fs = 0
+
+            for res in results:
+                if isinstance(res, Exception):
+                    failed += 1
+                    chapter_logs.append(f"  ❌ 异常: {str(res)[:40]}")
+                    continue
+
+                status_type, tag, data = res
+
+                if status_type == "skip_empty":
+                    chapter_logs.append(f"  ⚠️ {tag}: 跳过（无内容）")
+                elif status_type == "timeout":
+                    failed += 1
+                    status = f"  ⏱ {tag}: 超时（>{PER_CHAPTER_TIMEOUT}s），跳过"
+                    chapter_logs.append(status)
+                    if queue:
+                        await queue.put({"_progress": status.strip()})
+                elif status_type == "censored":
+                    failed += 1
+                    status = f"  🚫 {tag}: 审查拦截 — {data}"
+                    chapter_logs.append(status)
+                    if queue:
+                        await queue.put({"_progress": status.strip()})
+                elif status_type == "error":
+                    failed += 1
+                    status = f"  ❌ {tag}: 错误 — {data}"
+                    chapter_logs.append(status)
+                    if queue:
+                        await queue.put({"_progress": status.strip()})
+                elif status_type == "empty":
+                    failed += 1
+                    status = f"  🚫 {tag}: 空响应，疑似审查"
+                    chapter_logs.append(status)
+                    if queue:
+                        await queue.put({"_progress": status.strip()})
+                elif status_type == "parse_error":
+                    failed += 1
+                    status = f"  ❌ {tag}: 解析失败 — {data}"
+                    chapter_logs.append(status)
+                    if queue:
+                        await queue.put({"_progress": status.strip()})
+                elif status_type == "ok":
+                    chapter_result = data
                     try:
-                        skip = await asyncio.wait_for(
-                            _should_skip_chapter(
-                                loop, content, entity_cache.get_cards(), title),
-                            timeout=30
+                        new_count, update_count, rel_count, fs_count = _apply_progressive_result_batch(
+                            chapter_result, kb, book_id
                         )
-                    except Exception:
-                        skip = False
-                    if skip:
-                        status = f"  ⏭ {tag} ({len(content)}字): 无新变化，跳过"
+                        batch_new += new_count
+                        batch_updated += update_count
+                        batch_rels += rel_count
+                        batch_fs += fs_count
+                        # Collect LLM-extracted timeline events
+                        for te in chapter_result.get("timeline_events", []):
+                            collected_tl_events.append(te)
+                        status = (f"  ✅ {tag}: "
+                                  f"+{new_count}新 ↑{update_count}更新 +{rel_count}关系 +{fs_count}伏笔")
                         chapter_logs.append(status)
                         if queue:
                             await queue.put({"_progress": status.strip()})
-                        continue
+                    except Exception as e:
+                        failed += 1
+                        status = f"  ❌ {tag}: 入库失败 — {str(e)[:40]}"
+                        chapter_logs.append(status)
+                        if queue:
+                            await queue.put({"_progress": status.strip()})
 
-            to_process.append((idx, title, content))
+            total_new += batch_new
+            total_updated += batch_updated
+            total_relations += batch_rels
+            total_foreshadows += batch_fs
 
-        if not to_process:
-            continue
+            entity_cache.refresh()
 
-        if queue:
-            tags = [f"第{idx + 1}章" for idx, _, _ in to_process]
-            await queue.put({"_progress": f"并行提取: {', '.join(tags)}..."})
+        entities = kb.list_entities()
+        json_store.update_book_stats(book_id, entity_count=len(entities))
 
-        cards_snapshot = entity_cache.get_cards()
+        validation_result = ""
+        if entities:
+            if queue:
+                await queue.put({"_progress": "全部章节提取完毕，正在通读验证一致性..."})
+            try:
+                validation_result = await asyncio.wait_for(
+                    _validate_consistency(loop, kb, book_id), timeout=PER_CHAPTER_TIMEOUT
+                )
+            except Exception as e:
+                validation_result = f"（验证步骤出错: {str(e)[:50]}）"
 
-        sem = asyncio.Semaphore(BATCH_CONCURRENCY)
+        # ── Create timeline events from LLM output + fallback from chapter data ──
+        timeline_synced = 0
+        if kb is not None:
+            from core.knowledge import TimelineEvent
+            existing_tl_ids = {e.id for e in kb.list_timeline_events()}
+            all_entities = kb.list_entities()
+            name_to_id = {}
+            for e in all_entities:
+                name_to_id[e.name] = e.id
+                name_to_id[e.name.lower()] = e.id
+                for alias in e.aliases:
+                    name_to_id[alias] = e.id
+                    name_to_id[alias.lower()] = e.id
+            loc_entities = {e.name.lower(): e.id for e in all_entities if e.type == "location"}
 
-        async def _sem_process(idx, title, content):
-            async with sem:
-                return await _process_one(idx, title, content, cards_snapshot)
-
-        tasks = [_sem_process(idx, title, content)
-                 for idx, title, content in to_process]
-        results = await asyncio.gather(*tasks, return_exceptions=True)
-
-        batch_new = 0
-        batch_updated = 0
-        batch_rels = 0
-        batch_fs = 0
-
-        for res in results:
-            if isinstance(res, Exception):
-                failed += 1
-                chapter_logs.append(f"  ❌ 异常: {str(res)[:40]}")
-                continue
-
-            status_type, tag, data = res
-
-            if status_type == "skip_empty":
-                chapter_logs.append(f"  ⚠️ {tag}: 跳过（无内容）")
-            elif status_type == "timeout":
-                failed += 1
-                status = f"  ⏱ {tag}: 超时（>{PER_CHAPTER_TIMEOUT}s），跳过"
-                chapter_logs.append(status)
-                if queue:
-                    await queue.put({"_progress": status.strip()})
-            elif status_type == "censored":
-                failed += 1
-                status = f"  🚫 {tag}: 审查拦截 — {data}"
-                chapter_logs.append(status)
-                if queue:
-                    await queue.put({"_progress": status.strip()})
-            elif status_type == "error":
-                failed += 1
-                status = f"  ❌ {tag}: 错误 — {data}"
-                chapter_logs.append(status)
-                if queue:
-                    await queue.put({"_progress": status.strip()})
-            elif status_type == "empty":
-                failed += 1
-                status = f"  🚫 {tag}: 空响应，疑似审查"
-                chapter_logs.append(status)
-                if queue:
-                    await queue.put({"_progress": status.strip()})
-            elif status_type == "parse_error":
-                failed += 1
-                status = f"  ❌ {tag}: 解析失败 — {data}"
-                chapter_logs.append(status)
-                if queue:
-                    await queue.put({"_progress": status.strip()})
-            elif status_type == "ok":
-                chapter_result = data
-                try:
-                    new_count, update_count, rel_count, fs_count = _apply_progressive_result_batch(
-                        chapter_result, kb, book_id
-                    )
-                    batch_new += new_count
-                    batch_updated += update_count
-                    batch_rels += rel_count
-                    batch_fs += fs_count
-                    # Collect LLM-extracted timeline events
-                    for te in chapter_result.get("timeline_events", []):
-                        collected_tl_events.append(te)
-                    status = (f"  ✅ {tag}: "
-                              f"+{new_count}新 ↑{update_count}更新 +{rel_count}关系 +{fs_count}伏笔")
-                    chapter_logs.append(status)
-                    if queue:
-                        await queue.put({"_progress": status.strip()})
-                except Exception as e:
-                    failed += 1
-                    status = f"  ❌ {tag}: 入库失败 — {str(e)[:40]}"
-                    chapter_logs.append(status)
-                    if queue:
-                        await queue.put({"_progress": status.strip()})
-
-        total_new += batch_new
-        total_updated += batch_updated
-        total_relations += batch_rels
-        total_foreshadows += batch_fs
-
-        entity_cache.refresh()
-
-    entities = kb.list_entities()
-    json_store.update_book_stats(book_id, entity_count=len(entities))
-
-    validation_result = ""
-    if entities:
-        if queue:
-            await queue.put({"_progress": "全部章节提取完毕，正在通读验证一致性..."})
-        try:
-            validation_result = await asyncio.wait_for(
-                _validate_consistency(loop, kb, book_id), timeout=PER_CHAPTER_TIMEOUT
-            )
-        except Exception as e:
-            validation_result = f"（验证步骤出错: {str(e)[:50]}）"
-
-    # ── Create timeline events from LLM output + fallback from chapter data ──
-    timeline_synced = 0
-    if kb is not None:
-        from core.knowledge import TimelineEvent
-        existing_tl_ids = {e.id for e in kb.list_timeline_events()}
-        all_entities = kb.list_entities()
-        name_to_id = {}
-        for e in all_entities:
-            name_to_id[e.name] = e.id
-            name_to_id[e.name.lower()] = e.id
-            for alias in e.aliases:
-                name_to_id[alias] = e.id
-                name_to_id[alias.lower()] = e.id
-        loc_entities = {e.name.lower(): e.id for e in all_entities if e.type == "location"}
-
-        # First: process LLM-extracted timeline events (with location, sub-events)
-        for te in collected_tl_events:
-            time_order = te.get("time_order", 0)
-            label = te.get("label", "")
-            chapter_ref = te.get("chapter_ref", "")
-            characters = te.get("characters", [])
-            location_name = te.get("location", "")
-            if not time_order or not label:
-                continue
-            _to_str = str(time_order).replace(".", "_")
-            evt_id = f"evt_ch{_to_str}"
-            if evt_id in existing_tl_ids:
-                continue
-            kb.add_timeline_event(TimelineEvent(
-                id=evt_id,
-                time_point=f"第{time_order}章" if isinstance(time_order, int) else str(time_order),
-                label=label,
-                time_order=time_order,
-                description="",
-                chapter_ref=chapter_ref,
-                track_id="main",
-                track_name="主线",
-                track_color="#22d3ee",
-                time_label=chapter_ref or str(time_order),
-                location_ref=location_name,
-            ))
-            existing_tl_ids.add(evt_id)
-            timeline_synced += 1
-            # Link characters
-            matched_ids = []
-            for char_name in characters:
-                eid = name_to_id.get(char_name) or name_to_id.get(char_name.lower())
-                if not eid:
-                    for alias, aid in name_to_id.items():
-                        if char_name.lower() in alias.lower() or alias.lower() in char_name.lower():
-                            eid = aid
-                            break
-                if eid:
-                    matched_ids.append(eid)
-            if matched_ids:
-                kb.link_timeline_to_entities(evt_id, matched_ids[:30])
-            # Link event to location via OCCURRED_AT
-            if location_name:
-                loc_id = loc_entities.get(location_name.lower())
-                if loc_id:
-                    try:
-                        kb._run("""
-                            MATCH (t:Timeline {id: $tid, project_id: $pid})
-                            MATCH (l:Entity {id: $lid, project_id: $pid})
-                            MERGE (t)-[:OCCURRED_AT]->(l)
-                        """, {"tid": evt_id, "lid": loc_id, "pid": book_id})
-                    except Exception:
-                        pass
-
-        # Fallback: for chapters without LLM timeline events, create from title
-        covered_chapters = set()
-        for te in collected_tl_events:
-            ch_ref = te.get("chapter_ref", "")
-            if ch_ref:
-                try:
-                    ch_num = int(ch_ref.replace("#", "").split(".")[0])
-                    covered_chapters.add(ch_num)
-                except ValueError:
-                    pass
-        for idx, ch in enumerate(chapters):
-            if (idx + 1) in covered_chapters:
-                continue  # LLM already created events for this chapter
-            view = json_store._chapter_view(ch) if "versions" in ch else ch
-            title = view.get("title", "")
-            if not title:
-                continue
-            evt_id = f"evt_ch{idx + 1}"
-            if evt_id in existing_tl_ids:
-                continue
-            content = view.get("content", "")
-            kb.add_timeline_event(TimelineEvent(
-                id=evt_id,
-                time_point=f"第{idx + 1}章",
-                label=title,
-                time_order=idx + 1,
-                description=content[:200] if content else "",
-                chapter_ref=f"#{idx + 1}",
-                track_id="main",
-                track_name="主线",
-                track_color="#22d3ee",
-                time_label=f"第{idx + 1}章",
-            ))
-            existing_tl_ids.add(evt_id)
-            timeline_synced += 1
-            # Link characters mentioned in this chapter
-            if content and name_to_id:
-                content_lower = content.lower()
-                matched_ids = [eid for name, eid in name_to_id.items()
-                               if name in content_lower and eid not in matched_ids]
+            # First: process LLM-extracted timeline events (with location, sub-events)
+            for te in collected_tl_events:
+                time_order = te.get("time_order", 0)
+                label = te.get("label", "")
+                chapter_ref = te.get("chapter_ref", "")
+                characters = te.get("characters", [])
+                location_name = te.get("location", "")
+                if not time_order or not label:
+                    continue
+                _to_str = str(time_order).replace(".", "_")
+                evt_id = f"evt_ch{_to_str}"
+                if evt_id in existing_tl_ids:
+                    continue
+                kb.add_timeline_event(TimelineEvent(
+                    id=evt_id,
+                    time_point=f"第{time_order}章" if isinstance(time_order, int) else str(time_order),
+                    label=label,
+                    time_order=time_order,
+                    description="",
+                    chapter_ref=chapter_ref,
+                    track_id="main",
+                    track_name="主线",
+                    track_color="#22d3ee",
+                    time_label=chapter_ref or str(time_order),
+                    location_ref=location_name,
+                ))
+                existing_tl_ids.add(evt_id)
+                timeline_synced += 1
+                # Link characters
+                matched_ids = []
+                for char_name in characters:
+                    eid = name_to_id.get(char_name) or name_to_id.get(char_name.lower())
+                    if not eid:
+                        for alias, aid in name_to_id.items():
+                            if char_name.lower() in alias.lower() or alias.lower() in char_name.lower():
+                                eid = aid
+                                break
+                    if eid:
+                        matched_ids.append(eid)
                 if matched_ids:
                     kb.link_timeline_to_entities(evt_id, matched_ids[:30])
-        if timeline_synced > 0 and queue:
-            await queue.put({"_progress": f"同步 {timeline_synced} 个时间线事件到知识图谱"})
+                # Link event to location via OCCURRED_AT
+                if location_name:
+                    loc_id = loc_entities.get(location_name.lower())
+                    if loc_id:
+                        try:
+                            kb._run("""
+                                MATCH (t:Timeline {id: $tid, project_id: $pid})
+                                MATCH (l:Entity {id: $lid, project_id: $pid})
+                                MERGE (t)-[:OCCURRED_AT]->(l)
+                            """, {"tid": evt_id, "lid": loc_id, "pid": book_id})
+                        except Exception:
+                            pass
 
-    summary_parts = [
-        f"逐章提取完成（{len(chapters)} 章）:",
-        f"  ✅ 新增实体: {total_new}",
-        f"  ↑ 更新实体: {total_updated}",
-        f"  🔗 新增关系: {total_relations}",
-        f"  📌 新增伏笔: {total_foreshadows}",
-        f"  ⏱ 时间线事件: {timeline_synced}",
-        f"  ❌ 失败/跳过: {failed}",
-        f"  📊 知识库总实体: {len(entities)}",
-    ]
-    if chapter_logs:
-        summary_parts.append("\n逐章详情:")
-        summary_parts.extend(chapter_logs)
-    if validation_result:
-        summary_parts.append(f"\n一致性审核:\n{validation_result}")
+            # Fallback: for chapters without LLM timeline events, create from title
+            covered_chapters = set()
+            for te in collected_tl_events:
+                ch_ref = te.get("chapter_ref", "")
+                if ch_ref:
+                    try:
+                        ch_num = int(ch_ref.replace("#", "").split(".")[0])
+                        covered_chapters.add(ch_num)
+                    except ValueError:
+                        pass
+            for idx, ch in enumerate(chapters):
+                if (idx + 1) in covered_chapters:
+                    continue  # LLM already created events for this chapter
+                view = json_store._chapter_view(ch) if "versions" in ch else ch
+                title = view.get("title", "")
+                if not title:
+                    continue
+                evt_id = f"evt_ch{idx + 1}"
+                if evt_id in existing_tl_ids:
+                    continue
+                content = view.get("content", "")
+                kb.add_timeline_event(TimelineEvent(
+                    id=evt_id,
+                    time_point=f"第{idx + 1}章",
+                    label=title,
+                    time_order=idx + 1,
+                    description=content[:200] if content else "",
+                    chapter_ref=f"#{idx + 1}",
+                    track_id="main",
+                    track_name="主线",
+                    track_color="#22d3ee",
+                    time_label=f"第{idx + 1}章",
+                ))
+                existing_tl_ids.add(evt_id)
+                timeline_synced += 1
+                # Link characters mentioned in this chapter
+                if content and name_to_id:
+                    content_lower = content.lower()
+                    matched_ids = [eid for name, eid in name_to_id.items()
+                                   if name in content_lower and eid not in matched_ids]
+                    if matched_ids:
+                        kb.link_timeline_to_entities(evt_id, matched_ids[:30])
+            if timeline_synced > 0 and queue:
+                await queue.put({"_progress": f"同步 {timeline_synced} 个时间线事件到知识图谱"})
 
-    return "\n".join(summary_parts)
+        summary_parts = [
+            f"逐章提取完成（{len(chapters)} 章）:",
+            f"  ✅ 新增实体: {total_new}",
+            f"  ↑ 更新实体: {total_updated}",
+            f"  🔗 新增关系: {total_relations}",
+            f"  📌 新增伏笔: {total_foreshadows}",
+            f"  ⏱ 时间线事件: {timeline_synced}",
+            f"  ❌ 失败/跳过: {failed}",
+            f"  📊 知识库总实体: {len(entities)}",
+        ]
+        if chapter_logs:
+            summary_parts.append("\n逐章详情:")
+            summary_parts.extend(chapter_logs)
+        if validation_result:
+            summary_parts.append(f"\n一致性审核:\n{validation_result}")
+
+        return "\n".join(summary_parts)
+    except Exception as e:
+        import logging
+        import traceback
+        logger = logging.getLogger(__name__)
+        logger.error("extract_all_chapters failed: %s\n%s", e, traceback.format_exc())
+        if queue:
+            try:
+                await queue.put({"_progress": f"❌ 提取中断: {str(e)[:80]}"})
+            except Exception:
+                pass
+        return (f"❌ 知识提取过程中断: {str(e)[:200]}\n"
+                f"已完成: 新增 {total_new} 实体, 更新 {total_updated}, "
+                f"关系 {total_relations}, 伏笔 {total_foreshadows}, "
+                f"失败 {failed} 章")
 
 async def _batch_edit_chapters(
         loop, args: dict, kb, book_id: str, msg: str = "", queue=None) -> str:
