@@ -50,10 +50,10 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build & push backend image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
-          file: ./Dockerfile.backend
+          file: Dockerfile.backend
           push: true
           tags: |
             ${{ env.REGISTRY }}/${{ env.OWNER_LC }}/anyspark-backend:${{ env.VERSION }}
@@ -62,10 +62,10 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Build & push frontend image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: ./frontend
-          file: ./Dockerfile
+          file: Dockerfile
           push: true
           tags: |
             ${{ env.REGISTRY }}/${{ env.OWNER_LC }}/anyspark-frontend:${{ env.VERSION }}
