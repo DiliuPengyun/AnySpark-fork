@@ -17,6 +17,13 @@ export default defineConfig({
   },
   server: {
     port: 8190,
-    proxy: { '/api': 'http://localhost:8191' }
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8191',
+        changeOrigin: true,
+        timeout: 600000,  // 10 min — SSE streaming for long-running tools
+        proxyTimeout: 600000,
+      }
+    }
   }
 })

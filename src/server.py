@@ -361,4 +361,4 @@ wf_engine.register("generate_outline", _handle_generate_outline)
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host=config.server.host, port=config.server.port)
+    uvicorn.run(app, host=config.server.host, port=config.server.port, timeout_keep_alive=300, log_level="info")

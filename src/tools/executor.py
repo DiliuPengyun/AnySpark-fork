@@ -305,16 +305,17 @@ async def execute_tool(loop, name: str, args: dict, kb, book_id: str,
                     "book_id": book_id},
                 source="executor"))
         return result
-    except ToolExecutionError:
+    except ToolExecutionError as e:
         bus.emit_sync(
             Event(
                 type=EventType.TOOL_FAILED,
-                data={
-                    "tool": name,
-                    "error": "ToolExecutionError"},
+                data={"tool": name, "error": str(e)[:100]},
                 source="executor"))
-        raise
-    except Exception as e:
+        logger.error("Tool %s failed with ToolExecutionError: %s", name, e)
+        return f"\\u274c 工具 {name} 执行失败: {str(e)[:150]}"
+    except BaseException as e:
+        if isinstance(e, (KeyboardInterrupt, SystemExit)):
+            raise
         err = str(e)
         err_lower = err.lower()
         logger.error("Tool %s failed with args=%s: %s\n%s",

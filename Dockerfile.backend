@@ -19,4 +19,4 @@ RUN mkdir -p data
 
 EXPOSE 8191
 
-CMD ["python", "-m", "uvicorn", "src.server:app", "--host", "0.0.0.0", "--port", "8191"]
+CMD ["python", "-m", "uvicorn", "src.server:app", "--host", "0.0.0.0", "--port", "8191", "--timeout-keep-alive", "300"]

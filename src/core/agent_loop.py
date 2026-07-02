@@ -1213,8 +1213,9 @@ async def _prepare_tool_calls(
         raise
     except Exception as e:
         # Unexpected error in validation / permission layer. Backfill remaining
-        # tool_calls with error messages, then re-raise so the outer loop can
-        # surface a useful error instead of a 400 from the next LLM call.
+        # tool_calls with error messages so the message list stays well-formed,
+        # then return normally instead of re-raising. Re-raising would propagate
+        # the exception to the outer loop's finally block → abnormal_exit.
         logger.warning("_prepare_tool_calls exception mid-loop, backfilling remaining tool_calls: %s", e)
         for tc in response.tool_calls:
             if tc.id not in processed_ids:
@@ -1225,7 +1226,6 @@ async def _prepare_tool_calls(
                         "content": f"[错误] 准备工具调用时内部异常: {str(e)[:100]}",
                     }
                 )
-        raise
 
 
 async def _await_answer(question_id: str) -> bool:

@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { createSSE } from "../api"
 import { parseSSE, isEventStream } from "../sse"
 
-const HEARTBEAT_MS = 30000
+const HEARTBEAT_MS = 300000  // 5 min — long-running tools (extract_all_chapters etc.) can take 200s+
 
 export interface SSECallbacks {
   onMessage?: (msg: { type: string; text: string; parts?: unknown[]; metrics?: Record<string, unknown> }) => void
