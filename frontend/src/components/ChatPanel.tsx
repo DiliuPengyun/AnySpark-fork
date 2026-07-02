@@ -169,9 +169,9 @@ export default function ChatPanel({ bookId, sessionId, autoModeEnabled, transfor
       })
     },
     onError: (e, msg) => {
-      let errorText = '请求失败，请检查后端'
-      if (msg?.startsWith('/s ')) errorText = '提取失败'
-      if (msg?.startsWith('/w ') || msg?.startsWith('/ws ')) errorText = '连接出错，请重试'
+      let errorText = '⚠️ 请求失败，请检查后端'
+      if (msg?.startsWith('/s ')) errorText = '⚠️ 提取失败'
+      if (msg?.startsWith('/w ') || msg?.startsWith('/ws ')) errorText = '⚠️ 连接出错，请重试'
       setMessages(prev => [...prev, { role: 'agent', text: errorText, retry: true }])
     },
     onMetrics: (data) => {

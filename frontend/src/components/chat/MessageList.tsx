@@ -244,7 +244,7 @@ export default function MessageList({
                 <Icon name="edit" size={10} /> 编辑
               </button>
             )}
-            {msg.role === 'agent' && msg.text && msg.text.startsWith('⚠️') && onRetry && (
+            {msg.role === 'agent' && onRetry && ((msg as any).retry || (msg.text && msg.text.startsWith('⚠️'))) && (
               <button
                 onClick={() => onRetry(i)}
                 className="mt-1 text-[10px] text-zinc-500 hover:text-amber-400 transition-colors px-2 py-0.5 flex items-center gap-1"
