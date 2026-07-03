@@ -9,7 +9,7 @@ const TAG_PREFIXES = VISIBLE_TAGS.map(t => t.toLowerCase())
 
 export function createNarrativeFilter() {
   let buffer = ''
-  let stopped = false
+  const stopped = false
 
   return {
     /** Push incoming chunk, return extracted narrative text. */
