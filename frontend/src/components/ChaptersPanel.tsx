@@ -39,7 +39,6 @@ export default function ChaptersPanel({ bookId }: { bookId: string }) {
   const [showCreateMenu, setShowCreateMenu] = useState(false)
   const [chapterSearch, setChapterSearch] = useState('')
   const [volumes, setVolumes] = useState<any[]>([])
-  const [ungroupedChapterIds, setUngroupedChapterIds] = useState<string[]>([])
   const createMenuRef = useRef(null)
   const [recentlyEdited] = useState(new Set())
   const editorInstanceRef = useRef(null)
@@ -247,7 +246,6 @@ export default function ChaptersPanel({ bookId }: { bookId: string }) {
       if (res.ok) {
         const data = await res.json()
         setVolumes(data.volumes || [])
-        setUngroupedChapterIds((data.ungrouped_chapters || []).map((c: any) => c.id))
       }
     } catch (e) { /* silent */ }
   }
