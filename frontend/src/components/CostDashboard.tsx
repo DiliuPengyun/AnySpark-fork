@@ -79,7 +79,7 @@ export default function CostDashboard({ bookId }: { bookId: string }) {
 
     const arcs = g.selectAll('.arc').data(pie(data)).enter().append('g').attr('class', 'arc')
     arcs.append('path').attr('d', arc).attr('fill', (_: any, i: number) => color(String(i)))
-      .attr('stroke', '#0b1220').attr('stroke-width', 1.5)
+      .attr('stroke', 'var(--color-zinc-50)').attr('stroke-width', 1.5)
 
     arcs.on('mouseover', function(event: any, d: any) {
       d3.select(this).select('path').attr('opacity', 0.8)
@@ -89,10 +89,10 @@ export default function CostDashboard({ bookId }: { bookId: string }) {
 
     // Center label
     g.append('text').attr('text-anchor', 'middle').attr('y', -5)
-      .attr('fill', '#e4e4e7').attr('font-size', 14).attr('font-weight', 'bold')
+      .attr('fill', 'var(--color-zinc-200)').attr('font-size', 14).attr('font-weight', 'bold')
       .text(formatTokens(total))
     g.append('text').attr('text-anchor', 'middle').attr('y', 12)
-      .attr('fill', '#71717a').attr('font-size', 10)
+      .attr('fill', 'var(--color-zinc-500)').attr('font-size', 10)
       .text('总 Token')
   }
 
@@ -129,13 +129,13 @@ export default function CostDashboard({ bookId }: { bookId: string }) {
 
     g.append('g').attr('transform', `translate(0,${innerH})`)
       .call(d3.axisBottom(x).ticks(Math.min(points.length, 6)).tickFormat(d3.timeFormat('%m/%d') as any))
-      .call((g: any) => g.select('.domain').attr('stroke', '#3f3f46'))
-      .call((g: any) => g.selectAll('text').attr('fill', '#71717a').attr('font-size', 9))
+      .call((g: any) => g.select('.domain').attr('stroke', 'var(--color-zinc-700)'))
+      .call((g: any) => g.selectAll('text').attr('fill', 'var(--color-zinc-500)').attr('font-size', 9))
 
     g.append('g')
       .call(d3.axisLeft(y).ticks(3).tickFormat((d: any) => formatTokens(d)) as any)
-      .call((g: any) => g.select('.domain').attr('stroke', '#3f3f46'))
-      .call((g: any) => g.selectAll('text').attr('fill', '#71717a').attr('font-size', 9))
+      .call((g: any) => g.select('.domain').attr('stroke', 'var(--color-zinc-700)'))
+      .call((g: any) => g.selectAll('text').attr('fill', 'var(--color-zinc-500)').attr('font-size', 9))
   }
 
   if (loading) {

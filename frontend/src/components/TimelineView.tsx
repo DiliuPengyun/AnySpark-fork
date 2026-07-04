@@ -68,10 +68,10 @@ export default function TimelineView({ bookId }) {
 
     const tooltip = d3.select(containerRef.current).selectAll('.tl-tooltip').data([0]).join('div')
       .attr('class', 'tl-tooltip')
-      .style('position', 'absolute').style('background', '#27272a')
-      .style('border', '1px solid #3f3f46').style('border-radius', '8px')
+      .style('position', 'absolute').style('background', 'var(--color-zinc-800)')
+      .style('border', '1px solid var(--color-zinc-700)').style('border-radius', '8px')
       .style('padding', '8px 12px').style('font-size', '11px').style('max-width', '220px')
-      .style('color', '#d4d4d8').style('pointer-events', 'none')
+      .style('color', 'var(--color-zinc-300)').style('pointer-events', 'none')
       .style('opacity', 0).style('z-index', 20)
 
     const floatingEvents = events.filter(e => !e.track_id || e.track_id === 'main' && tracks.length === 1)
@@ -164,7 +164,7 @@ export default function TimelineView({ bookId }) {
       g.append('circle')
         .attr('cx', cx).attr('cy', ty).attr('r', nodeR)
         .attr('fill', isSelected ? '#fff' : color)
-        .attr('stroke', isCurrentTime ? '#22d3ee' : (isSelected ? color : '#18181b'))
+        .attr('stroke', isCurrentTime ? '#22d3ee' : (isSelected ? color : 'var(--color-zinc-900)'))
         .attr('stroke-width', isCurrentTime ? 3 : (isSelected ? 3 : 2))
         .attr('cursor', 'pointer')
         .on('click', () => {
@@ -197,7 +197,7 @@ export default function TimelineView({ bookId }) {
           g.append('circle')
             .attr('cx', dx).attr('cy', dy).attr('r', 2.5)
             .attr('fill', CHAR_DOT_COLORS[ci % CHAR_DOT_COLORS.length])
-            .attr('stroke', '#18181b').attr('stroke-width', 0.5)
+            .attr('stroke', 'var(--color-zinc-900)').attr('stroke-width', 0.5)
             .attr('pointer-events', 'none')
         })
       }
@@ -207,7 +207,7 @@ export default function TimelineView({ bookId }) {
       if (timeText) {
         g.append('text')
           .attr('x', cx).attr('y', ty + nodeR + 16)
-          .attr('text-anchor', 'middle').attr('fill', isCurrentTime ? '#22d3ee' : '#52525b')
+          .attr('text-anchor', 'middle').attr('fill', isCurrentTime ? '#22d3ee' : 'var(--color-zinc-600)')
           .attr('font-size', 9)
           .text(timeText.length > 12 ? timeText.slice(0, 11) + '…' : timeText)
       }
@@ -218,7 +218,7 @@ export default function TimelineView({ bookId }) {
         const maxLabelLen = spacing >= 100 ? 12 : spacing >= 70 ? 10 : 8
         g.append('text')
           .attr('x', cx).attr('y', ty - nodeR - 8)
-          .attr('text-anchor', 'middle').attr('fill', isCurrentTime ? '#67e8f9' : '#d4d4d8')
+          .attr('text-anchor', 'middle').attr('fill', isCurrentTime ? '#67e8f9' : 'var(--color-zinc-300)')
           .attr('font-size', spacing >= 70 ? 10 : 9).attr('font-weight', isCurrentTime ? 700 : 500)
           .text(ev.label.length > maxLabelLen ? ev.label.slice(0, maxLabelLen - 1) + '…' : ev.label)
       }

@@ -217,7 +217,7 @@ export default function WorldMap({ bookId }) {
 
     const label = g.append('g').selectAll('text').data(nodes).join('text')
       .text(d => d.name).attr('font-size', d => d.r >= 13 ? 11 : 9)
-      .attr('font-weight', 500).attr('fill', '#e4e4e7')
+      .attr('font-weight', 500).attr('fill', 'var(--color-zinc-200)')
       .attr('text-anchor', 'middle').attr('dy', d => -(d.r + 8))
       .attr('pointer-events', 'none').attr('x', d => d.x).attr('y', d => d.y)
 

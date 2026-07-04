@@ -155,7 +155,7 @@ export default function GraphInsights({ bookId }: { bookId: string }) {
           {/* 环形评分 */}
           <div className="relative shrink-0">
             <svg width={88} height={88} viewBox="0 0 88 88">
-              <circle cx={44} cy={44} r={36} fill="none" stroke="#27272a" strokeWidth={6} />
+              <circle cx={44} cy={44} r={36} fill="none" stroke="var(--color-zinc-800)" strokeWidth={6} />
               <circle
                 cx={44} cy={44} r={36} fill="none"
                 stroke={diagnosis.health_score >= 80 ? '#34d399' : diagnosis.health_score >= 60 ? '#fbbf24' : '#f87171'}
@@ -168,7 +168,7 @@ export default function GraphInsights({ bookId }: { bookId: string }) {
               <text x={44} y={40} textAnchor="middle" fill="currentColor" className={`text-lg font-bold ${healthColor}`} style={{ dominantBaseline: 'central' }}>
                 {diagnosis.health_score}
               </text>
-              <text x={44} y={58} textAnchor="middle" fill="#71717a" fontSize={9} style={{ dominantBaseline: 'central' }}>
+              <text x={44} y={58} textAnchor="middle" fill="var(--color-zinc-500)" fontSize={9} style={{ dominantBaseline: 'central' }}>
                 健康分
               </text>
             </svg>

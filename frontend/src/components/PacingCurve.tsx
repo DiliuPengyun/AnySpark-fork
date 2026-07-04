@@ -90,7 +90,7 @@ export default function PacingCurve({ bookId }: { bookId: string }) {
     g.selectAll('.grid-h').data(y.ticks(4)).enter().append('line')
       .attr('x1', 0).attr('x2', innerW)
       .attr('y1', (d: any) => y(d)).attr('y2', (d: any) => y(d))
-      .attr('stroke', '#27272a').attr('stroke-dasharray', '2,3')
+      .attr('stroke', 'var(--color-zinc-800)').attr('stroke-dasharray', '2,3')
 
     // Draw lines for each enabled metric
     activeMetrics.forEach(m => {
@@ -105,29 +105,29 @@ export default function PacingCurve({ bookId }: { bookId: string }) {
       g.selectAll(`.dot-${m.key}`).data(data).enter().append('circle')
         .attr('cx', (d: any) => x(d.chapter_index))
         .attr('cy', (d: any) => y((d as any)[m.key] || 0))
-        .attr('r', 3).attr('fill', m.color).attr('stroke', '#0b1220').attr('stroke-width', 1)
+        .attr('r', 3).attr('fill', m.color).attr('stroke', 'var(--color-zinc-50)').attr('stroke-width', 1)
     })
 
     // X axis
     g.append('g').attr('transform', `translate(0,${innerH})`)
       .call(d3.axisBottom(x).ticks(Math.min(data.length, 12)).tickFormat(d => `第${d}章`))
-      .call((g: any) => g.select('.domain').attr('stroke', '#3f3f46'))
-      .call((g: any) => g.selectAll('text').attr('fill', '#71717a').attr('font-size', 9)
+      .call((g: any) => g.select('.domain').attr('stroke', 'var(--color-zinc-700)'))
+      .call((g: any) => g.selectAll('text').attr('fill', 'var(--color-zinc-500)').attr('font-size', 9)
         .attr('transform', 'rotate(-25)').attr('text-anchor', 'end').attr('dy', '0.5em'))
 
     // Y axis
     g.append('g')
       .call(d3.axisLeft(y).ticks(4))
-      .call((g: any) => g.select('.domain').attr('stroke', '#3f3f46'))
-      .call((g: any) => g.selectAll('text').attr('fill', '#71717a').attr('font-size', 10))
+      .call((g: any) => g.select('.domain').attr('stroke', 'var(--color-zinc-700)'))
+      .call((g: any) => g.selectAll('text').attr('fill', 'var(--color-zinc-500)').attr('font-size', 10))
 
     // Tooltip
     const tooltip = d3.select(container).selectAll('.pacing-tip').data([0]).join('div')
       .attr('class', 'pacing-tip')
-      .style('position', 'absolute').style('background', '#18181b')
-      .style('border', '1px solid #3f3f46').style('border-radius', '8px')
+      .style('position', 'absolute').style('background', 'var(--color-zinc-900)')
+      .style('border', '1px solid var(--color-zinc-700)').style('border-radius', '8px')
       .style('padding', '8px 10px').style('font-size', '11px')
-      .style('color', '#d4d4d8').style('pointer-events', 'none')
+      .style('color', 'var(--color-zinc-300)').style('pointer-events', 'none')
       .style('opacity', 0).style('z-index', 30)
 
     g.selectAll('.hover-zone').data(data).enter().append('rect')
@@ -137,7 +137,7 @@ export default function PacingCurve({ bookId }: { bookId: string }) {
       .attr('height', innerH).attr('fill', 'transparent')
       .on('mouseover', (event: any, d: any) => {
         tooltip.style('opacity', 1)
-          .html(`<div style="font-weight:600;color:#e4e4e7;margin-bottom:3px">第${d.chapter_index}章: ${d.title}</div>`
+          .html(`<div style="font-weight:600;color:var(--color-zinc-200);margin-bottom:3px">第${d.chapter_index}章: ${d.title}</div>`
             + `<div>节奏分: <span style="color:#0ea5e9">${d.pacing_score}</span></div>`
             + `<div>对话: <span style="color:#a78bfa">${(d.dialogue_ratio * 100).toFixed(0)}%</span></div>`
             + `<div>场景转换: <span style="color:#fbbf24">${d.scene_transition_count}</span></div>`)

@@ -111,7 +111,7 @@ export default function CharacterHeatmap({ bookId }) {
       .attr('class', 'row-label')
       .attr('x', -8).attr('y', (_, i) => i * rowH + rowH / 2)
       .attr('text-anchor', 'end').attr('dominant-baseline', 'middle')
-      .attr('fill', '#a1a1aa').attr('font-size', 11)
+      .attr('fill', 'var(--color-zinc-400)').attr('font-size', 11)
       .text(d => d.charName.length > 8 ? d.charName.slice(0, 8) + '…' : d.charName)
 
     // X axis (chapter indices)
@@ -119,16 +119,16 @@ export default function CharacterHeatmap({ bookId }) {
     for (let i = 0; i < chaptersCount; i += showEvery) {
       sg.append('text')
         .attr('x', i * cellSize + cellSize / 2).attr('y', -8)
-        .attr('text-anchor', 'middle').attr('fill', '#71717a').attr('font-size', 10)
+        .attr('text-anchor', 'middle').attr('fill', 'var(--color-zinc-500)').attr('font-size', 10)
         .text(`#${i + 1}`)
     }
 
     // Tooltip
     const tooltip = d3.select(containerRef.current).append('div')
-      .style('position', 'absolute').style('background', '#18181b')
-      .style('border', '1px solid #3f3f46').style('border-radius', '8px')
+      .style('position', 'absolute').style('background', 'var(--color-zinc-900)')
+      .style('border', '1px solid var(--color-zinc-700)').style('border-radius', '8px')
       .style('padding', '6px 10px').style('font-size', '11px')
-      .style('color', '#d4d4d8').style('pointer-events', 'none')
+      .style('color', 'var(--color-zinc-300)').style('pointer-events', 'none')
       .style('opacity', 0).style('z-index', 30)
       .style('box-shadow', '0 4px 12px rgb(0 0 0 / 0.4)')
 
@@ -147,7 +147,7 @@ export default function CharacterHeatmap({ bookId }) {
             .on('mouseover', function(event) {
               d3.select(this).attr('stroke-opacity', 1)
               tooltip.style('opacity', 1)
-                .html(`<div style="font-weight:600;color:#e4e4e7">${row.charName}</div>`
+                .html(`<div style="font-weight:600;color:var(--color-zinc-200)">${row.charName}</div>`
                     + `<div style="margin-top:2px">第${idx}章 · <span style="color:#38bdf8">${count}</span> 次提及</div>`)
                 .style('left', `${event.offsetX + 12}px`)
                 .style('top', `${event.offsetY - 10}px`)

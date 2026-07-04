@@ -109,7 +109,7 @@ export default function StatsDashboard() {
 
     if (data.length === 0) {
       svg.append('text').attr('x', FW / 2).attr('y', FH / 2)
-        .attr('text-anchor', 'middle').attr('fill', '#52525b').attr('font-size', 13)
+        .attr('text-anchor', 'middle').attr('fill', 'var(--color-zinc-600)').attr('font-size', 13)
         .text('暂无写作数据')
       return
     }
@@ -135,7 +135,7 @@ export default function StatsDashboard() {
     g.selectAll('.grid-h').data(y.ticks(4)).enter().append('line')
       .attr('x1', 0).attr('x2', innerW)
       .attr('y1', (d: any) => y(d)).attr('y2', (d: any) => y(d))
-      .attr('stroke', '#27272a').attr('stroke-dasharray', '2,3')
+      .attr('stroke', 'var(--color-zinc-800)').attr('stroke-dasharray', '2,3')
 
     const defs = svg.append('defs')
     const grad = defs.append('linearGradient').attr('id', 'areaGrad').attr('x1', '0').attr('x2', '0').attr('y1', '0').attr('y2', '1')
@@ -151,27 +151,27 @@ export default function StatsDashboard() {
     const activePoints = points.filter((p: any) => p.words > 0)
     g.selectAll('.dot').data(activePoints).enter().append('circle')
       .attr('cx', (d: any) => x(d.date)).attr('cy', (d: any) => y(d.words))
-      .attr('r', 3).attr('fill', '#0ea5e9').attr('stroke', '#0b1220').attr('stroke-width', 1.5)
+      .attr('r', 3).attr('fill', '#0ea5e9').attr('stroke', 'var(--color-zinc-50)').attr('stroke-width', 1.5)
 
     const tickCount = Math.min(points.length, 7)
     g.append('g').attr('transform', `translate(0,${innerH})`)
       .call(d3.axisBottom(x).ticks(tickCount).tickFormat(d3.timeFormat('%m/%d') as any))
-      .call((g: any) => g.select('.domain').attr('stroke', '#3f3f46'))
-      .call((g: any) => g.selectAll('text').attr('fill', '#71717a').attr('font-size', 10))
-      .call((g: any) => g.selectAll('line').attr('stroke', '#3f3f46'))
+      .call((g: any) => g.select('.domain').attr('stroke', 'var(--color-zinc-700)'))
+      .call((g: any) => g.selectAll('text').attr('fill', 'var(--color-zinc-500)').attr('font-size', 10))
+      .call((g: any) => g.selectAll('line').attr('stroke', 'var(--color-zinc-700)'))
 
     g.append('g')
       .call(d3.axisLeft(y).ticks(4).tickFormat((d: any) => d >= 1000 ? `${(d/1000).toFixed(0)}k` : d) as any)
-      .call((g: any) => g.select('.domain').attr('stroke', '#3f3f46'))
-      .call((g: any) => g.selectAll('text').attr('fill', '#71717a').attr('font-size', 10))
-      .call((g: any) => g.selectAll('line').attr('stroke', '#3f3f46'))
+      .call((g: any) => g.select('.domain').attr('stroke', 'var(--color-zinc-700)'))
+      .call((g: any) => g.selectAll('text').attr('fill', 'var(--color-zinc-500)').attr('font-size', 10))
+      .call((g: any) => g.selectAll('line').attr('stroke', 'var(--color-zinc-700)'))
 
     const tooltip = d3.select(container).selectAll('.stats-tip').data([0]).join('div')
       .attr('class', 'stats-tip')
-      .style('position', 'absolute').style('background', '#18181b')
-      .style('border', '1px solid #3f3f46').style('border-radius', '8px')
+      .style('position', 'absolute').style('background', 'var(--color-zinc-900)')
+      .style('border', '1px solid var(--color-zinc-700)').style('border-radius', '8px')
       .style('padding', '8px 10px').style('font-size', '11px')
-      .style('color', '#d4d4d8').style('pointer-events', 'none')
+      .style('color', 'var(--color-zinc-300)').style('pointer-events', 'none')
       .style('opacity', 0).style('z-index', 30)
 
     const bisect = d3.bisector((d: any) => d.date).left
@@ -193,10 +193,10 @@ export default function StatsDashboard() {
       tooltip.style('opacity', 1)
         .style('left', `${event.offsetX + 12}px`)
         .style('top', `${event.offsetY - 8}px`)
-        .html(`<div style="font-weight:600;color:#e4e4e7;margin-bottom:3px">${formatDate(d.rawDate)}</div>`
+        .html(`<div style="font-weight:600;color:var(--color-zinc-200);margin-bottom:3px">${formatDate(d.rawDate)}</div>`
             + `<div>写字: <span style="color:#38bdf8">${d.created}</span></div>`
             + `<div>编辑: <span style="color:#34d399">${d.edited}</span></div>`
-            + `<div style="border-top:1px solid #3f3f46;margin-top:4px;padding-top:4px">合计: <b>${d.words}</b></div>`)
+            + `<div style="border-top:1px solid var(--color-zinc-700);margin-top:4px;padding-top:4px">合计: <b>${d.words}</b></div>`)
     }).on('mouseleave', () => {
       focus.style('display', 'none')
       tooltip.style('opacity', 0)
@@ -218,7 +218,7 @@ export default function StatsDashboard() {
 
     if (data.length === 0) {
       svg.append('text').attr('x', FW / 2).attr('y', FH / 2)
-        .attr('text-anchor', 'middle').attr('fill', '#52525b').attr('font-size', 13)
+        .attr('text-anchor', 'middle').attr('fill', 'var(--color-zinc-600)').attr('font-size', 13)
         .text('暂无章节数据')
       return
     }
@@ -235,7 +235,7 @@ export default function StatsDashboard() {
     g.selectAll('.grid').data(y.ticks(4)).enter().append('line')
       .attr('x1', 0).attr('x2', innerW)
       .attr('y1', (d: any) => y(d)).attr('y2', (d: any) => y(d))
-      .attr('stroke', '#27272a').attr('stroke-dasharray', '2,3')
+      .attr('stroke', 'var(--color-zinc-800)').attr('stroke-dasharray', '2,3')
 
     const barGroups = g.selectAll('.bar').data(data).enter().append('g').attr('class', 'bar')
     barGroups.append('rect')
@@ -248,16 +248,16 @@ export default function StatsDashboard() {
 
     const tooltip = d3.select(barContainerRef.current!).selectAll('.bar-tip').data([0]).join('div')
       .attr('class', 'bar-tip')
-      .style('position', 'absolute').style('background', '#18181b')
-      .style('border', '1px solid #3f3f46').style('border-radius', '8px')
+      .style('position', 'absolute').style('background', 'var(--color-zinc-900)')
+      .style('border', '1px solid var(--color-zinc-700)').style('border-radius', '8px')
       .style('padding', '8px 10px').style('font-size', '11px')
-      .style('color', '#d4d4d8').style('pointer-events', 'none')
+      .style('color', 'var(--color-zinc-300)').style('pointer-events', 'none')
       .style('opacity', 0).style('z-index', 30)
 
     barGroups.on('mouseover', function(event: any, d: any) {
       d3.select(this).select('rect').attr('opacity', 1).attr('stroke', '#fff').attr('stroke-width', 1)
       tooltip.style('opacity', 1)
-        .html(`<div style="font-weight:600;color:#e4e4e7">${d.isExtra ? '番外' : '第' + d.idx + '章'}: ${d.title}</div>`
+        .html(`<div style="font-weight:600;color:var(--color-zinc-200)">${d.isExtra ? '番外' : '第' + d.idx + '章'}: ${d.title}</div>`
             + `<div style="margin-top:3px"><span style="color:#38bdf8">${formatWords(d.wordCount)}</span> 字</div>`)
         .style('left', `${event.offsetX + 12}px`)
         .style('top', `${event.offsetY - 10}px`)
@@ -269,15 +269,15 @@ export default function StatsDashboard() {
     const showEvery = Math.max(1, Math.ceil(data.length / 15))
     g.append('g').attr('transform', `translate(0,${innerH})`)
       .call(d3.axisBottom(x).tickValues(data.map((d: any) => String(d.idx)).filter((_: any, i: number) => i % showEvery === 0)))
-      .call((g: any) => g.select('.domain').attr('stroke', '#3f3f46'))
-      .call((g: any) => g.selectAll('text').attr('fill', '#71717a').attr('font-size', 10).attr('transform', 'rotate(-30)').attr('text-anchor', 'end'))
-      .call((g: any) => g.selectAll('line').attr('stroke', '#3f3f46'))
+      .call((g: any) => g.select('.domain').attr('stroke', 'var(--color-zinc-700)'))
+      .call((g: any) => g.selectAll('text').attr('fill', 'var(--color-zinc-500)').attr('font-size', 10).attr('transform', 'rotate(-30)').attr('text-anchor', 'end'))
+      .call((g: any) => g.selectAll('line').attr('stroke', 'var(--color-zinc-700)'))
 
     g.append('g')
       .call(d3.axisLeft(y).ticks(4).tickFormat((d: any) => d >= 1000 ? `${(d/1000).toFixed(0)}k` : d) as any)
-      .call((g: any) => g.select('.domain').attr('stroke', '#3f3f46'))
-      .call((g: any) => g.selectAll('text').attr('fill', '#71717a').attr('font-size', 10))
-      .call((g: any) => g.selectAll('line').attr('stroke', '#3f3f46'))
+      .call((g: any) => g.select('.domain').attr('stroke', 'var(--color-zinc-700)'))
+      .call((g: any) => g.selectAll('text').attr('fill', 'var(--color-zinc-500)').attr('font-size', 10))
+      .call((g: any) => g.selectAll('line').attr('stroke', 'var(--color-zinc-700)'))
   }
 
   // ── Agent 效能趋势图 ──
@@ -310,25 +310,25 @@ export default function StatsDashboard() {
     g.selectAll('.grid-h').data(y.ticks(3)).enter().append('line')
       .attr('x1', 0).attr('x2', innerW)
       .attr('y1', (d: any) => y(d)).attr('y2', (d: any) => y(d))
-      .attr('stroke', '#27272a').attr('stroke-dasharray', '2,3')
+      .attr('stroke', 'var(--color-zinc-800)').attr('stroke-dasharray', '2,3')
 
     const line = (d3.line() as any).x((d: any) => x(d.date)).y((d: any) => y(d.avgRounds)).curve(d3.curveMonotoneX)
     g.append('path').datum(points).attr('fill', 'none').attr('stroke', '#a78bfa').attr('stroke-width', 2).attr('d', line)
 
     g.selectAll('.dot').data(points).enter().append('circle')
       .attr('cx', (d: any) => x(d.date)).attr('cy', (d: any) => y(d.avgRounds))
-      .attr('r', 3).attr('fill', '#a78bfa').attr('stroke', '#0b1220').attr('stroke-width', 1)
+      .attr('r', 3).attr('fill', '#a78bfa').attr('stroke', 'var(--color-zinc-50)').attr('stroke-width', 1)
 
     g.append('g').attr('transform', `translate(0,${innerH})`)
       .call(d3.axisBottom(x).ticks(Math.min(points.length, 6)).tickFormat(d3.timeFormat('%m/%d') as any))
-      .call((g: any) => g.select('.domain').attr('stroke', '#3f3f46'))
-      .call((g: any) => g.selectAll('text').attr('fill', '#71717a').attr('font-size', 10))
-      .call((g: any) => g.selectAll('line').attr('stroke', '#3f3f46'))
+      .call((g: any) => g.select('.domain').attr('stroke', 'var(--color-zinc-700)'))
+      .call((g: any) => g.selectAll('text').attr('fill', 'var(--color-zinc-500)').attr('font-size', 10))
+      .call((g: any) => g.selectAll('line').attr('stroke', 'var(--color-zinc-700)'))
 
     g.append('g')
       .call(d3.axisLeft(y).ticks(3).tickFormat((d: any) => `${d}`) as any)
-      .call((g: any) => g.select('.domain').attr('stroke', '#3f3f46'))
-      .call((g: any) => g.selectAll('text').attr('fill', '#71717a').attr('font-size', 10))
+      .call((g: any) => g.select('.domain').attr('stroke', 'var(--color-zinc-700)'))
+      .call((g: any) => g.selectAll('text').attr('fill', 'var(--color-zinc-500)').attr('font-size', 10))
   }
 
   if (loading) {

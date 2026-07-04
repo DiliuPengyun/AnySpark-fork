@@ -108,30 +108,30 @@ export default function ChapterDependencyGraph({ bookId }: { bookId: string }) {
         .on('end', (event, d) => { if (!event.active) simulation.alphaTarget(0); d.fx = null; d.fy = null }))
 
     node.append('circle')
-      .attr('r', 14).attr('fill', '#1e293b').attr('stroke', '#0ea5e9').attr('stroke-width', 2)
+      .attr('r', 14).attr('fill', 'var(--color-zinc-800)').attr('stroke', '#0ea5e9').attr('stroke-width', 2)
 
     node.append('text')
       .text(d => `${(d as any).index}`)
       .attr('text-anchor', 'middle').attr('dy', '0.35em')
-      .attr('fill', '#e4e4e7').attr('font-size', 10).attr('font-weight', 'bold')
+      .attr('fill', 'var(--color-zinc-200)').attr('font-size', 10).attr('font-weight', 'bold')
 
     // Tooltip
     const tooltip = d3.select(containerRef.current!).selectAll('.dep-tip').data([0]).join('div')
       .attr('class', 'dep-tip')
-      .style('position', 'absolute').style('background', '#18181b')
-      .style('border', '1px solid #3f3f46').style('border-radius', '8px')
+      .style('position', 'absolute').style('background', 'var(--color-zinc-900)')
+      .style('border', '1px solid var(--color-zinc-700)').style('border-radius', '8px')
       .style('padding', '6px 8px').style('font-size', '11px')
-      .style('color', '#d4d4d8').style('pointer-events', 'none')
+      .style('color', 'var(--color-zinc-300)').style('pointer-events', 'none')
       .style('opacity', 0).style('z-index', 30)
 
     node.on('mouseover', function(event: any, d: any) {
-      d3.select(this).select('circle').attr('r', 18).attr('fill', '#0c4a6e')
+      d3.select(this).select('circle').attr('r', 18).attr('fill', 'var(--color-accent-soft)')
       tooltip.style('opacity', 1)
         .html(`<div style="font-weight:600">第${d.index}章: ${d.title}</div>`)
         .style('left', `${event.offsetX + 12}px`)
         .style('top', `${event.offsetY - 8}px`)
     }).on('mouseout', function() {
-      d3.select(this).select('circle').attr('r', 14).attr('fill', '#1e293b')
+      d3.select(this).select('circle').attr('r', 14).attr('fill', 'var(--color-zinc-800)')
       tooltip.style('opacity', 0)
     })
 

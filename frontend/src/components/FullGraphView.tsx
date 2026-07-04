@@ -15,8 +15,8 @@ const NODE_STYLES: Record<string, { color: string; glow: string; r: number; labe
   event:         { color: '#f87171', glow: '#dc2626', r: 4, label: '事件' },
   timeline:      { color: '#22d3ee', glow: '#0891b2', r: 8, label: '时间线' },
   foreshadow:    { color: '#fb7185', glow: '#e11d48', r: 4, label: '伏笔' },
-  snapshot:      { color: '#a1a1aa', glow: '#52525b', r: 3, label: '阶段' },
-  unknown:       { color: '#71717a', glow: '#3f3f46', r: 4, label: '未知' },
+  snapshot:      { color: 'var(--color-zinc-400)', glow: 'var(--color-zinc-600)', r: 3, label: '阶段' },
+  unknown:       { color: 'var(--color-zinc-500)', glow: 'var(--color-zinc-700)', r: 4, label: '未知' },
 }
 
 const EDGE_STYLES: Record<string, { color: string; opacity: number; width: number }> = {
@@ -41,8 +41,8 @@ const EDGE_STYLES: Record<string, { color: string; opacity: number; width: numbe
   PARTICIPATES_IN: { color: '#c084fc', opacity: 0.15, width: 0.8 },
   TIMELINE_INVOLVES: { color: '#22d3ee', opacity: 0.1, width: 0.6 },
   FORESHADOW_INVOLVES: { color: '#fb7185', opacity: 0.1, width: 0.6 },
-  HAS_PHASE:       { color: '#52525b', opacity: 0.06, width: 0.5 },
-  default:         { color: '#52525b', opacity: 0.12, width: 0.8 },
+  HAS_PHASE:       { color: 'var(--color-zinc-600)', opacity: 0.06, width: 0.5 },
+  default:         { color: 'var(--color-zinc-600)', opacity: 0.12, width: 0.8 },
 }
 
 interface GraphData {
@@ -304,7 +304,7 @@ export default function FullGraphView({ bookId }: { bookId: string }) {
       if (showEdgeLabels) {
         edgeG.selectAll('text').data(groupLinks).join('text')
           .text((d: any) => (d as any).type.replace(/_/g, ' '))
-          .attr('font-size', 7).attr('fill', '#71717a')
+          .attr('font-size', 7).attr('fill', 'var(--color-zinc-500)')
           .attr('text-anchor', 'middle').attr('dy', -3)
           .attr('pointer-events', 'none')
           .attr('x', (d: any) => {
@@ -372,7 +372,7 @@ export default function FullGraphView({ bookId }: { bookId: string }) {
 
       // Main node (scaled by importance)
       el.append('circle').attr('r', scaledR).attr('fill', s.color)
-        .attr('stroke', isCurrentTime ? '#22d3ee' : '#18181b')
+        .attr('stroke', isCurrentTime ? '#22d3ee' : 'var(--color-zinc-900)')
         .attr('stroke-width', isCurrentTime ? 3 : (d.type === 'character' ? 2 : 1))
       // Highlight ring for current time node
       if (isCurrentTime) {
@@ -385,7 +385,7 @@ export default function FullGraphView({ bookId }: { bookId: string }) {
         const labelOpacity = 0.4 + importance * 0.6
         el.append('text').text(d.name?.length > 8 ? d.name.slice(0,7)+'…' : d.name)
           .attr('font-size', scaledR >= 7 ? 10 : 8).attr('font-weight', importance > 0.3 ? 600 : 400)
-          .attr('fill', d.type === 'character' ? '#e4e4e7' : '#a1a1aa')
+          .attr('fill', d.type === 'character' ? 'var(--color-zinc-200)' : 'var(--color-zinc-400)')
           .attr('opacity', labelOpacity)
           .attr('text-anchor', 'middle').attr('dy', -(scaledR + 6))
           .attr('pointer-events', 'none')
