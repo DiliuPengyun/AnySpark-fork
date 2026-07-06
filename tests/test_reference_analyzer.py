@@ -3,15 +3,13 @@
 
 """Tests for reference_analyzer — structure analysis and style quantification."""
 
-import json
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 
 from core.reference_analyzer import (
-    StyleFingerprint,
     StructureReport,
+    StyleFingerprint,
     _compute_dialogue_density,
     _compute_four_char_idiom_density,
     _compute_paragraph_length_stats,
@@ -25,7 +23,6 @@ from core.reference_analyzer import (
     load_analysis,
     quantify_style,
 )
-
 
 # ── Sample text for testing ──────────────────────────────────────────────
 

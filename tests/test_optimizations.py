@@ -1,14 +1,14 @@
 """Tests for writing performance optimizations."""
-import sys
 import os
+import sys
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from unittest.mock import patch
+
 from core.compaction import (
-    prune_stale_tool_results,
-    STALE_TOOL_PREVIEW_TOKENS,
     STALE_PRUNED_MARKER,
-    PRUNED_PLACEHOLDER,
+    prune_stale_tool_results,
 )
 from core.config import config
 
@@ -102,7 +102,7 @@ def test_planner_instruction_changed():
     planner_path = os.path.join(
         os.path.dirname(__file__), "..", "src", "core", "autopilot", "planner.py"
     )
-    with open(planner_path, "r", encoding="utf-8") as f:
+    with open(planner_path, encoding="utf-8") as f:
         content = f.read()
 
     assert "请参考前面的章节内容" not in content, "Old instruction should be removed"

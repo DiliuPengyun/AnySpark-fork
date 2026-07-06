@@ -4,9 +4,9 @@ from pydantic import BaseModel, ConfigDict
 from core.errors import NotFoundError
 from core.event_store import event_store
 from core.llm_client import MODELS as LLM_MODELS
-from core.permissions import permission_manager
 from core.parts import turns_from_history, turns_to_llm_messages
-from core.token_counter import count_message_tokens, count_tokens, get_context_limit
+from core.permissions import permission_manager
+from core.token_counter import count_message_tokens, get_context_limit
 from data.json_store import json_store
 
 router = APIRouter(tags=["sessions"])
