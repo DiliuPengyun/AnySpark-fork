@@ -2,6 +2,37 @@
 
 本文档记录项目的所有重要变更。格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)。
 
+## [2.3.0] - 2026-07-03
+
+### 新增
+
+- **参考书分析引擎**：`core/reference_analyzer.py` — 纯 Python 确定性分析引擎（无 LLM 调用），对导入参考书进行结构分析（字数/对话比/段落/句子/节奏曲线）和文风量化（句长分布/词汇丰富度/标点模式/成语密度/段落统计），结果自动注入写作 Prompt
+- **分析 REST API**：`routes/analysis_routes.py` — 5 个端点（触发/获取结构分析、触发/获取文风量化、列表缓存）
+- **分析工具**：`tools/impl/reference_analysis.py` — `analyze_structure` / `quantify_style` 两个工具
+- **前端分析 UI**：ReferenceBooksPanel 重构 — 可展开分析区、结构报告视图（指标+柱状图+节奏曲线）、文风指纹视图（TTR/成语密度/句长分布图+标点标签）、缓存状态徽章
+
+### 优化
+
+- **主动式陈旧工具结果裁剪**：每轮 Stage 0 运行 `prune_stale_tool_results()`，保护尾 60K tokens，裁剪消息截断至 800 tokens，减少未触发 compaction 前的上下文膨胀
+- **Compaction 激进调优**：threshold 0.95→0.70，protected_tail 80K→60K，tail_turns 5→4，max_tool_output 50K→30K；token_budget_ratio 0.8→0.0（1M 窗口模型不再需要累计 token 上限）
+- **LLM 客户端连接可靠性**：自定义 httpx 客户端绕过系统代理（`trust_env=False`），避免 VPN/Clash 代理 TLS 拦截；同步 chat 新增重试（5 次指数退避）；流式 chat 在首个内容前可重试；重试延迟 0.5s→1.0s / 8.0s→15.0s
+- **动态图谱 Schema**：`graph_store.py` 支持自定义关系类型（不在 `RelationType` 枚举中的类型优雅降级），`suggest_relationships` 改用动态 schema 查询替代硬编码排除列表
+- **Writer 系统 Prompt 缓存优化**：`_write_by_nodes` 构建单一 `stable_system` 传递给所有节点，利用 DeepSeek prefix caching 节省后续节点输入 token
+- **参考文风自动注入写作**：`writer.py` 在写作时自动注入缓存的结构分析和文风指纹数据
+- **System Prompt 章节列表优化**：仅显示最近 5 章详情，早期章节以计数摘要替代，保持上下文稳定利于 prefix caching
+- **Planner 指令优化**：不再要求读取前文全文，改为基于前情提要和纲要保持连贯
+
+### 修复
+
+- **Context Usage API 磁悬浮**：`sessions.py` 中 `get_context_usage` 改用 `turns_from_history` + `count_message_tokens` 精确计算，包含 tool_calls/tool_results/system prompt 开销
+- **Provider API Key 清空**：`settings.py` 前端编辑时空字符串不再覆盖已存储的 key
+- **图谱关系类型加载**：`graph_store.py` 自定义关系类型不再因 `ValueError` 崩溃
+
+### 测试
+
+- 新增 `tests/test_reference_analyzer.py` — 286 行覆盖文本工具/结构分析/文风量化/缓存
+- 新增 `tests/test_optimizations.py` — 131 行覆盖 compaction 配置/裁剪逻辑/planner 指令
+
 ## [2.2.0] - 2026-07-03
 
 ### 新增

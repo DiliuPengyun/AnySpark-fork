@@ -203,6 +203,40 @@ Cancel 请求 → RunState.cancel → 设置 cancelled flag → 循环内 check 
 
 ## 变更记录
 
+### v2.3 - 2026-07-03: 参考书分析引擎 + 上下文效率大修
+
+- 变更类型: 新增 + 优化 + 修复
+- 涉及模块: reference_analyzer(新), analysis_routes(新), reference_analysis(新), compaction, agent_loop, loop_state, llm_client, retry, config, graph_store, knowledge, writer, context_manager, knowledge_scope, system_prompt, autopilot/planner, tools, tool_meta, executor, sessions, settings, 前端 ReferenceBooksPanel, SettingsModal, api
+- 描述: 新增纯 Python 参考书分析引擎，实现结构分析和文风量化两条全链路（分析→缓存→Prompt 注入→前端展示）。上下文效率大幅提升——主动式陈旧工具结果裁剪（每轮执行）、Compaction 激进调优、LLM 客户端连接可靠性重构、系统 Prompt prefix caching 优化。动态图谱 schema 支持自定义关系类型。
+
+**新增模块:**
+- `core/reference_analyzer.py` — 纯 Python 确定性分析引擎（无 LLM 调用）：结构分析（字数/对话比/段落/句子/节奏曲线）和文风量化（句长分布/TTR/标点模式/成语密度/段落统计）
+- `routes/analysis_routes.py` — 5 个分析 API 端点
+- `tools/impl/reference_analysis.py` — `analyze_structure` / `quantify_style` 工具实现
+- `data/analyses/` — 分析结果 JSON 缓存目录
+
+**核心优化:**
+- `compaction.py` — 新增 `prune_stale_tool_results()` 主动裁剪（每轮执行，保护尾 60K tokens，陈旧消息截断至 800 tokens）
+- `config.py` — Compaction 调优：threshold 0.70, protected_tail 60K, tail_turns 4, max_tool_output 30K；token_budget_ratio 0.0
+- `llm_client.py` — 自定义 httpx 客户端绕过系统代理；同步 chat 新增重试（5 次指数退避）
+- `graph_store.py` — 动态关系类型支持，硬编码排除列表替换为动态 schema 查询
+- `writer.py` — 自动注入参考文风分析数据；稳定 system prompt 缓存（prefix caching）
+- `system_prompt.py` — 仅显示最近 5 章详情，早期章节以计数摘要替代
+- `autopilot/planner.py` — 优化指令，避免读取前文全文
+
+**修复:**
+- `sessions.py` — Context Usage API 改用 `turns_from_history` + `count_message_tokens` 精确计算
+- `settings.py` — Provider API Key 编辑时空字符串不再覆盖已存储 key
+- `graph_store.py` — 自定义关系类型加载不再崩溃
+
+**前端变更:**
+- ReferenceBooksPanel — 重构为 TypeScript，新增分析区（结构分析/文风量化按钮）、报告视图（指标+图表+节奏曲线）、缓存徽章
+- SettingsModal — 编辑 provider 时 api_key 默认空字符串，提示"留空保持不变"
+
+**新增测试:** 2 文件 417 行覆盖分析引擎、compaction 裁剪、planner 指令
+
+---
+
 ### v2.1 - 2026-07-03: 推演系统3.0 (Dual-Agent Simulation Engine)
 
 - 变更类型: 新增 + 重构
