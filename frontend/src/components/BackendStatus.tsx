@@ -8,7 +8,7 @@ export default function BackendStatus() {
 
   useEffect(() => {
     mountedRef.current = true
-    let timer: ReturnType<typeof setTimeout>
+    const timer: ReturnType<typeof setTimeout>
 
     async function check() {
       if (!mountedRef.current) return
