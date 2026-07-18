@@ -237,6 +237,7 @@ async def _loop_inner(
 ) -> AsyncGenerator[LoopEvent, None]:
 
     messages = _prepare_initial_messages(user_message, agent_config, history_messages)
+    session_id = agent_config.session_id or agent_config.book_id or "default"
     # is_subagent: True when this agent was spawned by another agent (not by the user).
     # Sub-agents must NOT see the task tool to prevent recursive spawn chains
     # (Nesting prevention for sub-agents).
@@ -297,6 +298,24 @@ async def _loop_inner(
         while not state.exhausted:
             handle.check_cancelled()
             state.advance_round()
+
+            # ── Stage -1: drain queued user messages (steering) ──
+            # /chat queues messages via start_or_queue() when a run is
+            # active. Drain them here so the "消息已排队" promise is real —
+            # otherwise they sit in the queue forever, never processed.
+            try:
+                queued_inputs = await run_state.drain_queued(session_id)
+            except Exception:
+                queued_inputs = []
+            for qi in queued_inputs:
+                logger.info("Draining queued steering message for %s: %r", session_id, qi.text[:80])
+                _append_user_hint(
+                    messages,
+                    (
+                        f"[系统提示] 用户在等待期间发来了新消息：{qi.text}\n"
+                        "请在后续处理中纳入考虑；若与当前任务冲突，以用户最新意图为准。"
+                    ),
+                )
 
             # ── Stage 0: proactive stale tool result pruning ──
             # Truncates old tool outputs to short previews BEFORE compaction

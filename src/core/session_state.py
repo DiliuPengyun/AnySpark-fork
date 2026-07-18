@@ -140,6 +140,22 @@ class SessionStateMachine:
         was queued (caller should NOT start a new agent loop)."""
         async with self._lock:
             state = self._states.get(session_id, SessionState.IDLE)
+            if state != SessionState.IDLE:
+                handle = self._handles.get(session_id)
+                if handle is None or handle.cancelled:
+                    # Ghost state: the previous run was cancelled or its SSE
+                    # client disconnected mid-stream, so the loop's finally
+                    # never released the session. No live loop will drain the
+                    # queue — reclaim the session instead of queueing into
+                    # the void (which misled users with "消息已排队").
+                    logger.info(
+                        "Reclaiming ghost session %s (state=%s, handle=%s)",
+                        session_id, state.value,
+                        "cancelled" if handle else "missing",
+                    )
+                    self._handles.pop(session_id, None)
+                    self._states[session_id] = SessionState.IDLE
+                    state = SessionState.IDLE
             if state == SessionState.IDLE:
                 self._states[session_id] = SessionState.RUNNING
                 handle = RunHandle(session_id=session_id)
@@ -170,9 +186,11 @@ class SessionStateMachine:
     async def release(self, session_id: str, handle: RunHandle):
         """Release the session back to IDLE. Called when the agent loop ends."""
         async with self._lock:
+            # Only the handle's owner may release. A stale release from an
+            # abandoned generator must not clobber a newer run's state.
             if self._handles.get(session_id) is handle:
                 self._handles.pop(session_id, None)
-            self._states[session_id] = SessionState.IDLE
+                self._states[session_id] = SessionState.IDLE
 
     async def drain_queued(self, session_id: str) -> list[QueuedInput]:
         """Drain all queued inputs for a session. Called by the agent loop
