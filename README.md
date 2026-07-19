@@ -320,6 +320,12 @@ docker compose up -d
 
 > ⚠️ **墙内用户**：如果 Docker 拉取镜像很慢，可以配置镜像加速器。打开 Docker Desktop 设置 → Docker Engine → 添加国内镜像源（如 `"https://docker.1ms.run"` 或 `"https://mirror.ccs.tencentyun.com"`）。
 
+> 🔨 **使用自己修改的代码**：默认方式拉取的是预构建镜像，**不包含本地源码改动**。如果你 fork 后修改了代码，用仓库自带的 build 覆盖文件从本地源码构建镜像：
+> ```bash
+> docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+> ```
+> 数据存放在 `./data` 挂载卷中，重建镜像不会丢失。
+
 ### 🔧 方式三：开发模式（需要 Python + Node.js）
 
 > ⚠️ 仅推荐给需要修改源码的开发者。普通用户用方式一或方式二即可。
