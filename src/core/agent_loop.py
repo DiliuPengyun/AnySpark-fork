@@ -1088,7 +1088,7 @@ async def _handle_tool_calls(
             logger.warning("Streaming tool %s raised: %s", tc.name, e)
             result = {"error": True, "tool": tc.name, "message": str(e)[:200]}
         try:
-            async for ev in _process_tool_result(tc, result, agent_config, state, messages):
+            async for ev in _process_tool_result(tc, result, agent_config, state, messages, handle):
                 yield ev
         except Exception as e:
             # Even the result-processor failed — manually append a placeholder
@@ -1128,7 +1128,7 @@ async def _handle_tool_calls(
                 result = f"工具 {tc.name} 出错: {str(result)[:100]}"
             elif isinstance(result, Exception):
                 result = f"工具 {tc.name} 出错: {str(result)[:100]}"
-            async for ev in _process_tool_result(tc, result, agent_config, state, messages):
+            async for ev in _process_tool_result(tc, result, agent_config, state, messages, handle):
                 yield ev
             _collect_result_parts(tc, result, state, messages)
 
@@ -1237,7 +1237,18 @@ async def _prepare_tool_calls(
                     agent_config.book_id,
                 )
                 yield LoopEvent(type="question", data={"id": q_req.id, "questions": q_req.questions})
-                confirmed = await _await_answer(q_req.id)
+                confirmed = False
+                try:
+                    async for ev in _wait_question_answer(q_req.id, handle):
+                        if ev.type == "question_answered":
+                            _ans = ev.data.get("answers") or []
+                            confirmed = bool(_ans and _ans[0] and "确认" in _ans[0][0])
+                        else:
+                            yield ev
+                except CancelledError:
+                    raise
+                except Exception:
+                    confirmed = False  # 用户拒绝或异常均视为不确认
                 if not confirmed:
                     messages.append({"role": "tool", "tool_call_id": tc.id, "content": f"用户取消了 {tc.name}。"})
                     processed_ids.add(tc.id)
@@ -1280,23 +1291,38 @@ async def _prepare_tool_calls(
                 )
 
 
-async def _await_answer(question_id: str) -> bool:
+async def _wait_question_answer(
+    question_id: str,
+    handle: RunHandle | None = None,
+    keepalive: float = 15.0,
+) -> AsyncGenerator[LoopEvent, None]:
+    """Wait for the user's answer with NO timeout — a user taking time to
+    think is not a failure.
+
+    Yields a keepalive ``progress`` event every ``keepalive`` seconds so the
+    SSE stream (and the frontend heartbeat) stays alive during the wait, then
+    a final ``question_answered`` event carrying ``answers`` in its data.
+
+    The pending-answer future is never cancelled by keepalive slicing —
+    plain ``wait_for`` cancels the awaited future on each chunk timeout,
+    which made answers arriving afterwards unreplyable (the old
+    ``_await_answer`` effectively broke questions after 10s). Run
+    cancellation still aborts the wait promptly via ``handle``.
+    """
+    waiter = asyncio.ensure_future(question_manager.wait_for_answer(question_id))
     try:
-        # Check every 10s for cancellation instead of blocking 300s straight
-        remaining = 300
-        while remaining > 0:
-            chunk = min(10, remaining)
-            try:
-                answers = await asyncio.wait_for(question_manager.wait_for_answer(question_id), timeout=chunk)
-                return bool(answers and answers[0] and "确认" in answers[0][0])
-            except TimeoutError:
-                remaining -= chunk
-                await asyncio.sleep(0)  # yield to allow cancellation
-        return False
+        while True:
+            done, _pending = await asyncio.wait({waiter}, timeout=keepalive)
+            if done:
+                yield LoopEvent(type="question_answered", data={"answers": waiter.result()})
+                return
+            if handle is not None and handle.cancelled:
+                waiter.cancel()
+                raise CancelledError(handle.session_id)
+            yield LoopEvent(type="progress", data={"stage": "等待你的回答..."})
     except asyncio.CancelledError:
-        raise  # Let cancellation propagate normally
-    except Exception:
-        return False
+        waiter.cancel()
+        raise
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1310,6 +1336,7 @@ async def _process_tool_result(
     agent_config: AgentConfig,
     state: LoopState,
     messages: list[dict],
+    handle: RunHandle | None = None,
 ) -> AsyncGenerator[LoopEvent, None]:
     """Handle every special result type (plot_cards / writing_result /
     task_list / patch_result / review_result / question / default) for BOTH
@@ -1346,12 +1373,17 @@ async def _process_tool_result(
                 "instruction": result.get("instruction", ""),
             },
         )
+        answers = None
         try:
-            answers = await asyncio.wait_for(question_manager.wait_for_answer(q_req.id), timeout=300)
+            async for ev in _wait_question_answer(q_req.id, handle):
+                if ev.type == "question_answered":
+                    answers = ev.data.get("answers")
+                else:
+                    yield ev
             selected_text = answers[0][0] if answers and answers[0] else "用户未选择"
-        except TimeoutError:
-            selected_text = "用户超时未选择"
-        except (ValueError, IndexError, KeyError):
+        except CancelledError:
+            raise
+        except Exception:
             selected_text = "用户拒绝了所有选项，请重新构思方向"
         result_str = f"用户的剧情方向选择: {selected_text}\n\n请根据用户选择继续。"
 
@@ -1383,7 +1415,18 @@ async def _process_tool_result(
             agent_config.book_id,
         )
         yield LoopEvent(type="question", data={"id": q_req.id, "questions": q_req.questions})
-        confirmed = await _await_answer(q_req.id)
+        confirmed = False
+        try:
+            async for ev in _wait_question_answer(q_req.id, handle):
+                if ev.type == "question_answered":
+                    _ans = ev.data.get("answers") or []
+                    confirmed = bool(_ans and _ans[0] and "确认" in _ans[0][0])
+                else:
+                    yield ev
+        except CancelledError:
+            raise
+        except Exception:
+            confirmed = False  # 用户拒绝或异常均视为不确认
         if confirmed:
             from core.autopilot_runner import autopilot as ap
 
@@ -1454,12 +1497,19 @@ async def _process_tool_result(
         if qs:
             q_req = question_manager.create_question(qs, agent_config.book_id)
             yield LoopEvent(type="question", data={"id": q_req.id, "questions": q_req.questions})
+            answers = None
             try:
-                answers = await asyncio.wait_for(question_manager.wait_for_answer(q_req.id), timeout=300)
-            except TimeoutError:
-                answers = [["用户超时未回复"]]
+                async for ev in _wait_question_answer(q_req.id, handle):
+                    if ev.type == "question_answered":
+                        answers = ev.data.get("answers")
+                    else:
+                        yield ev
+            except CancelledError:
+                raise
             except Exception:
                 answers = [["用户拒绝了提问"]]
+            if answers is None:
+                answers = [["用户未回复"]]
             # Format answers as a readable string for the LLM
             answer_parts = []
             for i, q in enumerate(qs):
