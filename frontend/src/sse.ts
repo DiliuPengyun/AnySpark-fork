@@ -30,7 +30,12 @@ export async function* parseSSE(response: Response): AsyncGenerator<SSEEvent> {
           if (line.startsWith('event:')) {
             event.type = line.slice(6).trim()
           } else if (line.startsWith('data:')) {
-            event.data += (event.data ? '\n' : '') + line.slice(5).trim()
+            // SSE 规范：'data:' 后最多去掉一个空格，其余为原始负载。
+            // 之前用 .trim()，会把分块边界处的有效空格吃掉（如 markdown
+            // '>'/'-' 标记后的空格），既污染流式正文，也导致 parts 与
+            // msg.text 覆盖校验失败（工具卡片无法按序交错渲染）。
+            const payload = line.slice(5)
+            event.data += (event.data ? '\n' : '') + (payload.startsWith(' ') ? payload.slice(1) : payload)
           } else if (line.startsWith(':')) {
             continue
           }
@@ -54,7 +59,8 @@ export async function* parseSSE(response: Response): AsyncGenerator<SSEEvent> {
         if (line.startsWith('event:')) {
           event.type = line.slice(6).trim()
         } else if (line.startsWith('data:')) {
-          event.data += (event.data ? '\n' : '') + line.slice(5).trim()
+          const payload = line.slice(5)
+          event.data += (event.data ? '\n' : '') + (payload.startsWith(' ') ? payload.slice(1) : payload)
         }
       }
       if (event.data) {
