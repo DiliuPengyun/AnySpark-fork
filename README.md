@@ -1,10 +1,10 @@
-# 火花 AnySpark — 智能小说创作引擎 v2.2.0
+# 火花 AnySpark — 智能小说创作引擎 v2.5.5
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![React 19](https://img.shields.io/badge/react-19-61dafb.svg)](https://react.dev/)
 [![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](../LICENSE)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
-[![CI](https://github.com/Mikexujunrui/AnySpark/actions/workflows/ci.yml/badge.svg)](https://github.com/Mikexujunrui/AnySpark/actions/workflows/ci.yml)
+[![CI](https://github.com/DiliuPengyun/AnySpark-fork/actions/workflows/ci.yml/badge.svg)](https://github.com/DiliuPengyun/AnySpark-fork/actions/workflows/ci.yml)
 
 > **每个人心中都有一簇火花，AnySpark 帮你点燃它。** 火花是一个基于 LLM 自主循环架构的全流程 AI 叙事创作平台——不止是写作助手，更是你的故事引擎。
 
@@ -277,9 +277,37 @@ FastAPI Backend (port 8191)
 
 ## 快速开始（三选一）
 
-### 🚀 方式一：一键安装（推荐，小白首选）
+### 🔨 方式一：从源码构建（推荐）
 
-如果你不想折腾命令行，克隆仓库后直接运行一键脚本：
+> 本仓库为个人 fork。此方式从本地源码构建镜像，**包含你的全部修改**，是日常使用与修改代码后的标准启动方式。
+
+```bash
+# 1. 克隆本仓库
+git clone https://github.com/DiliuPengyun/AnySpark-fork.git
+cd AnySpark-fork
+
+# 2. 创建环境变量文件
+cp .env.example .env
+# 编辑 .env，填入你的 DEEPSEEK_API_KEY（必填，这是唯一需要修改的配置）
+
+# 3. 从源码构建镜像并启动
+docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+
+# 4. 打开浏览器
+# http://localhost:8190
+```
+
+> 🔄 **日常启动**（代码没改动）：`docker compose -f docker-compose.yml -f docker-compose.build.yml up -d`（镜像已在本地，不会重建）。
+>
+> 🔄 **修改代码后**：重新执行第 3 步，`--build` 会重建镜像。数据存放在 `./data` 挂载卷和 neo4j 卷中，重建不会丢失。
+>
+> ⚠️ 不要运行 `docker compose pull` 或 `install.ps1`——它们拉取的是原作者的镜像，会覆盖你本地构建的版本。
+
+### 📦 方式二：使用原作者预构建镜像
+
+> ⚠️ 此方式运行的是原作者发布在 ghcr.io 的镜像，**不包含本 fork 的任何修改**。仅在想体验作者官方版本时使用。
+
+如果你不想折腾命令行，克隆原作者仓库后直接运行一键脚本：
 
 **Windows：**
 ```powershell
@@ -295,14 +323,10 @@ bash install.sh
 
 脚本会自动完成：检测 Docker → 引导你填入 API Key → 拉取镜像 → 启动服务。完成后打开浏览器访问 `http://localhost:8190`。
 
-> 🔄 **更新版本**：运行 `docker compose pull && docker compose up -d` 即可拉取最新镜像，数据不会丢失。
-
-### 📦 方式二：Docker Compose 手动部署
-
-如果你熟悉命令行，可以手动操作：
+也可以手动操作：
 
 ```bash
-# 1. 克隆仓库
+# 1. 克隆原作者仓库
 git clone https://github.com/Mikexujunrui/AnySpark.git
 cd AnySpark
 
@@ -319,12 +343,6 @@ docker compose up -d
 ```
 
 > ⚠️ **墙内用户**：如果 Docker 拉取镜像很慢，可以配置镜像加速器。打开 Docker Desktop 设置 → Docker Engine → 添加国内镜像源（如 `"https://docker.1ms.run"` 或 `"https://mirror.ccs.tencentyun.com"`）。
-
-> 🔨 **使用自己修改的代码**：默认方式拉取的是预构建镜像，**不包含本地源码改动**。如果你 fork 后修改了代码，用仓库自带的 build 覆盖文件从本地源码构建镜像：
-> ```bash
-> docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
-> ```
-> 数据存放在 `./data` 挂载卷中，重建镜像不会丢失。
 
 ### 🔧 方式三：开发模式（需要 Python + Node.js）
 
@@ -380,9 +398,11 @@ npx vite --port 8190 --host
 <details>
 <summary><b>如何更新到最新版本？</b></summary>
 
+本 fork 从源码构建，更新即拉取代码后重建镜像：
+
 ```bash
-docker compose pull        # 拉取最新镜像
-docker compose up -d       # 重启服务
+git pull
+docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
 ```
 你的数据在 `data/` 目录中，更新不会丢失。
 </details>
