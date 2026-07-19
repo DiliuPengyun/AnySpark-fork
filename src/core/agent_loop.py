@@ -469,6 +469,7 @@ async def _loop_inner(
                     )
                     if not streamed_text:
                         yield LoopEvent(type="text", data={"content": done_msg})
+                        state.add_part(TextPart(text=done_msg))
                     yield LoopEvent(
                         type="done",
                         data={
@@ -527,6 +528,9 @@ async def _loop_inner(
                     state.metrics.finish_reason = "done"
                 if not streamed_text:
                     yield LoopEvent(type="text", data={"content": done_msg})
+                    # Keep text-part coverage exact (frontend interleaves tool
+                    # cards with text only when parts fully cover the message).
+                    state.add_part(TextPart(text=done_msg))
                 yield LoopEvent(
                     type="done",
                     data={
@@ -541,6 +545,14 @@ async def _loop_inner(
             # ── Stage 7: tool-call branch ──
             state.last_tool_calls = ", ".join(tc.name for tc in response.tool_calls)
             logger.info("Round %d tool calls: %s", state.round, state.last_tool_calls)
+            # Record this round's narration BEFORE its tool calls so persisted
+            # parts keep chronological order (text → tools). The frontend then
+            # renders each tool card right after the reply that triggered it,
+            # instead of piling every tool call on top of the message.
+            if response.reasoning:
+                state.add_part(ReasoningPart(text=response.reasoning))
+            if streamed_text:
+                state.add_part(TextPart(text=streamed_text))
             async for ev in _handle_tool_calls(
                 response,
                 messages,

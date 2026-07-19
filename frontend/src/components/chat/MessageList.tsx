@@ -129,8 +129,15 @@ function ReasoningBlock({ text }) {
   )
 }
 
-function TurnParts({ parts }) {
-  if (!parts || parts.length === 0) return null
+function PartView({ part }) {
+  if (part.type === 'tool_call') return <ToolCallCard part={part} />
+  if (part.type === 'chapter_diff') return <ChapterDiffBadge part={part} />
+  if (part.type === 'reasoning') return <ReasoningBlock text={part.text} />
+  if (part.type === 'text') return <MemoizedMarkdown text={part.text} />
+  return null  // tool_result 等类型不直接展示
+}
+
+function TurnPartsGrouped({ parts }) {
   const toolCalls = parts.filter(p => p.type === 'tool_call')
   const diffs = parts.filter(p => p.type === 'chapter_diff')
   const reasoning = parts.filter(p => p.type === 'reasoning').map(p => p.text).join('')
@@ -148,6 +155,33 @@ function TurnParts({ parts }) {
         </div>
       )}
     </div>
+  )
+}
+
+function AgentBody({ msg, showToolCalls }) {
+  const parts = msg.parts
+  if (showToolCalls === false || !parts || parts.length === 0) {
+    return <MemoizedMarkdown text={msg.text} />
+  }
+  // 后端按时间顺序记录 parts（回复文本 → 工具调用 → 回复文本 …）。若所有
+  // text 段拼起来正好等于消息正文，说明 parts 覆盖完整：按原始顺序交错
+  // 渲染文本与工具卡片，每个工具卡片紧跟在触发它的回复后面。
+  // 否则（修复前的历史消息、写作工具的流式正文等）回退为旧版式——
+  // 非文本部分在上、正文在下，保证任何内容都不丢失。
+  const textParts = parts.filter(p => p.type === 'text')
+  const covered = textParts.length > 0 && textParts.map(p => p.text || '').join('') === (msg.text || '')
+  if (covered) {
+    return (
+      <div className="space-y-2">
+        {parts.map((p, i) => p.type === 'tool_result' ? null : <PartView key={i} part={p} />)}
+      </div>
+    )
+  }
+  return (
+    <>
+      <TurnPartsGrouped parts={parts} />
+      <MemoizedMarkdown text={msg.text} />
+    </>
   )
 }
 
@@ -218,10 +252,7 @@ export default function MessageList({
                   onCancel={() => setEditingIdx(null)}
                 />
               ) : msg.role === 'agent' ? (
-                <>
-                  {showToolCalls !== false && msg.parts && <TurnParts parts={msg.parts} />}
-                  <MemoizedMarkdown text={msg.text} />
-                </>
+                <AgentBody msg={msg} showToolCalls={showToolCalls} />
               ) : (
                 <span className="whitespace-pre-wrap">{msg.text}</span>
               )}
